@@ -1,0 +1,552 @@
+---
+title: "MUSA 507: Targeting Affordable Credit with Logistic Regression"
+author: "Nicolas Corona"
+date: "October 25, 2019"
+output:  
+  html_document#:
+    toc: TRUE
+    toc_float: true
+    theme: united
+  
+---
+```{r setup, echo=TRUE}
+knitr::opts_chunk$set(echo = TRUE, results=TRUE, message = FALSE, 
+                      warning=FALSE, fig.align="center", cache=FALSE)
+```
+
+```{r load, results="hide", cache = FALSE}
+
+# Load packages
+library(here)
+library(kableExtra)
+library(forcats)
+library(scales)
+library(anchors)
+library(rgdal)
+library(ckanr)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(psych)
+library(janitor)
+library(tigris)
+library(plyr)
+library(lubridate)
+library(tidyverse)
+library(pROC)
+library(caret)
+library(knitr) 
+library(pscl)
+library(plotROC)
+
+# Establish color palettes
+palette2 <- c("#981FAC","#FF006A")
+palette4 <- c("#FA7800","#C48C04","#8FA108","#5AB60C","#25CB10")
+palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+
+# Read in starter data set.
+credit <- read_csv("housingSubsidy.csv")
+credit$credit <- credit$y_numeric == 1
+credit$credit <- as.factor(credit$credit)
+credit$repairsLT5050 <- ifelse(credit$spent_on_repairs <= 5050, "yes", "no")
+credit$repairsGT5150 <- ifelse(credit$spent_on_repairs >= 5150, "yes", "no")
+credit$unemploy_rate_neg <- ifelse(credit$unemploy_rate < 0, "yes", "no")
+credit$unemploy_rate_pos <- ifelse(credit$unemploy_rate > 0, "yes", "no")
+credit$campaignGTE11 <- ifelse(credit$campaign >= 11, "yes", "no")
+
+credit_orig <- read_csv("housingSubsidy.csv")
+credit_orig[which(credit_orig$taxLien == "yes"),]$taxLien <- "no"
+credit_orig[which(credit_orig$education == "illiterate"),]$education <- "unknown"
+credit_orig[which(credit_orig$marital == "unknown"),]$education <- "divorced"
+
+# Unused
+# credit$cons.conf.idxGTneg30 <- ifelse(credit$cons.conf.idx >= -30, "yes", "no")
+# credit$cons.conf.idxGTneg35 <- ifelse(credit$cons.conf.idx >= -35, "yes", "no")
+# credit$cons.conf.idxLTEneg48 <- ifelse(credit$cons.conf.idx <= -48, "yes", "no")
+# credit$cons.price.idxLTE92.5 <- ifelse(credit$cons.price.idx <= 92.5, "yes", "no")
+
+```
+
+# Introduction
+
+Low-quality housing stock is an enduring challenge for community developers around the United States.  Low-quality housing stock can put a damper on the growth of a neighborhood for decades, and cities are increasingly interested in empowering homeowners of low-quality housing to repair their own homes.  In Philadelphia, the Department of Housing and Community Development (HCD) offers access to affordable credit for owners of low-quality housing stock to invest in home improvement. The HCD markets this program to eligible users, but city-wide only 11% of eligible homeowners make use of the credit.  In order to improve usage rates, I will build on a data set of past HCD marketing campaigns to create an actionable cost-benefit analysis that will help the HCD most effectively allocate its limited marketing funding to prospective lenders.
+
+# Data
+### The Provided Data
+
+Data for this analysis is provided by the HCD.  It provides a variety of information regarding the target members of past marketing campaigns for the HCD's housing credit program.
+
+Here you can view a sample of the data available for analysis:
+```{r table1}
+head(select(credit, -X1))
+```
+  
+
+### Continuous Features 
+
+I seek to identify features that are predictive of whether or not individuals will enroll in the housing credit program.  I begin by building visualizations to help me identify whether features in the data are associated with participation in the housing credit program. 
+
+**Figure 1. Predictive, continuous (numerical) features.**
+
+```{r bargraph1}
+credit %>% # Predictive continuous variables.
+  dplyr::select(credit, unemploy_rate, previous, inflation_rate) %>%
+  gather(Variable, value, -credit) %>%
+  ggplot(aes(credit, value, fill=credit)) +
+  geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+  facet_wrap(~Variable, scales = "free") +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature associations with the likelihood of program enrollment",
+       subtitle = "(continous outcomes)") +
+  theme(legend.position = "none")
+```
+
+I immediately observe that having been previously contacted by a marketing campaign (previous) is strongly associated with participating in the program.  It is also apparent that a negative unemployment rate is also strongly associated with choosing to participate in the program.  It is not currently apparent whether the inflation rate is predictive of participation.  We look at more variables to find out! 
+
+**Figure 2. Non-predictive, continuous (numerical) features.**
+
+```{r bargraph2}
+credit %>% # Non-predictive continuous variables.
+  dplyr::select(credit, age, cons.conf.idx, cons.price.idx, spent_on_repairs, campaign) %>%
+  gather(Variable, value, -credit) %>%
+  ggplot(aes(credit, value, fill=credit)) +
+  geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+  facet_wrap(~Variable, scales = "free") +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature associations with the likelihood of program enrollment",
+       subtitle = "(continous outcomes)") +
+  theme(legend.position = "none")
+```
+
+Looking at the above, I see that none of these variables are particularly associated with enrollment in the program.  In other words, the average value of these fields is equal between those who were marketed to and then enrolled in the program and those who then did not.  Furthermore, we see that the inflation rate may be a useful predictor compared to these five features.
+
+### Logical Features 
+
+Now we turn to logical predictive features - features whose values are either true, false, or unknown.  Above, we saw that several continuous features were not associated with enrollment.  However, their extremes might be more associated with enrollment:  for example, someone who spends a relatively large amount on their home outside of the program may be more likely to enroll in the program given their history of investment in home improvements.  Below we see several provided and engineered logical features.
+
+**Figure 3. Non-predictive, logical features.**
+
+```{r bargraph3}
+credit %>% # Logical (true/false) variables.  None are predictive across yes/no/unknown.  One could argue they are negatively associated.
+  dplyr::select(credit, taxLien, mortgage, taxbill_in_phl, repairsGT5150) %>%
+  gather(Variable, value, -credit) %>%
+  count(Variable, value, credit) %>%
+  filter(value == "yes") %>%
+  ggplot(., aes(credit, n, fill = credit)) +   
+  geom_bar(position = "dodge", stat="identity") +
+  facet_wrap(~Variable) +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature associations with the likelihood of program enrollment",
+       subtitle = "Two category features (Yes and No)") +
+  theme(legend.position = "none")
+```
+
+These features, excluding tax liens on the home (taxLien) are very strongly negatively associated with program enrollment.  At first glance, then, they may seem like strong predictors.  However, only 11% of eligible homeowners enroll in this program.  Many predictors are likely to appear strongly negatively associated with enrollment because of low nominal enrollment.  I will take these results with a grain of salt.
+
+**Figure 4. Predictive logical features.**
+
+```{r bargraph4}
+credit %>% # Logical (true/false) variables.  Predictive across yes/no/unknown.  One could argue they are negatively associated.
+  dplyr::select(credit, repairsLT5050, unemploy_rate_neg, unemploy_rate_pos) %>%
+  gather(Variable, value, -credit) %>%
+  count(Variable, value, credit) %>%
+  filter(value == "yes") %>%
+  ggplot(., aes(credit, n, fill = credit)) +   
+  geom_bar(position = "dodge", stat="identity") +
+  facet_wrap(~Variable) +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature associations with the likelihood of program enrollment",
+       subtitle = "Two category features (Yes and No)") +
+  theme(legend.position = "none")
+```
+
+Here I observe more promising predictors.  A positive employment rate appears to be a strong negative predictor of enrollment.  Notice that the proportion of those who enroll among those who have a positive employment rate is far below 11%.  This suggests this is a strong predictor despite the pre-existing low rate of program enrollment.  Furthermore, I note that since so few homeowners enroll in the program, the fact that 50% of those who invest in repairs less than or equal to $5050 enroll indicates that that feature may be a strong positive predictor of enrollment.  
+
+### Categorical Features 
+
+**Figure 5. Categorical features.**
+
+```{r bargraph5}
+credit %>% # Categorical features
+  dplyr::select(credit, job, marital, education) %>%
+  gather(Variable, value, -credit) %>%
+  count(Variable, value, credit) %>%
+  ggplot(., aes(value, n, fill = credit)) +   
+  geom_bar(position = "dodge", stat="identity") +
+  facet_wrap(~Variable, scales="free") +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature associations with the likelihood of program enrollment",
+       subtitle = "Category features") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Here I note that none of these features, nor their categories, appear to demonstrate an association out of the norm with an 11% enrollment rate.  For the sake of brevity, I will omit more visualizations of categorical variables save one, regarding previous outcomes of campaign messaging (poutcome).
+
+**Figure 6. Outcome of previous campaign messaging.**
+
+```{r bargraph6}
+credit$poutcome_failure <- credit$poutcome == "failure"
+credit$poutcome_none <- credit$poutcome == "nonexistent"
+credit$poutcome_success <- credit$poutcome == "success"
+
+credit %>%
+  dplyr::select(credit, poutcome_failure, poutcome_none, poutcome_success) %>%
+  gather(Variable, value, -credit) %>%
+  count(Variable, value, credit) %>%
+  ggplot(., aes(value, n, fill = credit)) +   
+  geom_bar(position = "dodge", stat="identity") +
+  facet_wrap(~Variable, scales="free") +
+  scale_fill_manual(values = palette2) +
+  labs(x="credit", y="Value",
+       title = "Feature association with the likelihood of program enrollment",
+       subtitle = "Three category features") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Above, I created three new logical features that indicate whether previous campaigns targeted or were successful in enrolling a particular homeowner.  In particular, I note that having been successfully targeted previously is a strong predictor of new enrollment.
+
+### Predictive Features 
+
+In summary, I identify the following promising predictive features:
+
+      - previous:  whether a homeowner previously enrolled in the program
+      - unemploy_rate:  employment variation rate - quarterly indicator 
+      - inflation_rate
+      - poutcome_success:  whether previous marketing campaigns resulted in successful program enrollment
+      - repairsLT5050:  whether homeowner has invested less than $5050 in their home
+      - campaignGTE11:  whether previous campaigns contacted this individual >= 11 times
+      - unemploy_rate_pos:  whether homeowner has positive unemploy_rate
+
+
+# Training a Model
+
+### Baseline Model
+
+In order to test the quality of my model against a generic model, I first create a baseline model that makes use of every provided predictor.
+
+**Figure 7. Baseline model ROC, sensitivity, and specificity.**
+
+```{r bargraph7}
+
+######################################################
+# Prepare training and test data for BASELINE model. #
+######################################################
+
+# Kitchen Sink:  dump all of the plates (possible predictors) into the sink (model)
+syntheticCVfit <- data.frame()
+
+# Simulates cvFit with 100 folds.  Allows for non-50% cutoffs.
+for (i in c(1:100)) {
+  # Choose random numbers between 1 and nrow(credit_orig).
+  indices <- floor(runif(floor(0.65 * nrow(credit_orig)), min = 1, max = nrow(credit_orig)))
+  
+  creditTrain <- credit_orig[ indices,]
+  creditTest  <- credit_orig[-indices,]
+  
+  # Create a basic logistic regression model.
+  
+  creditModel <- glm(
+    y_numeric ~ ., 
+    data = select(creditTrain, -y),
+    family = "binomial" (link = "logit")
+  )
+  
+  # Predict values given credit model.
+  testProbs <- data.frame(
+    Outcome = as.factor(creditTest$y_numeric),
+    Probs = predict(creditModel, creditTest, type= "response"))
+  
+  testProbs <- testProbs %>% mutate(predictedOutcome  = as.factor(ifelse(testProbs$Probs > 0.5, 1, 0))) # Choose a cutoff in the ifelse.
+  
+  # Visualize of sensitivity and specificity of model.  Should outperform 20% specificity.
+  confMatrix <- caret::confusionMatrix(testProbs$predictedOutcome, testProbs$Outcome, positive = "1")
+  roc <- auc(testProbs$Outcome, testProbs$Probs)
+  sensitivity <- confMatrix$byClass[1]
+  specificity <- confMatrix$byClass[2]
+  syntheticCVfit <- rbind(c(ROC = roc, Sensitivity = sensitivity, Specificity = specificity), syntheticCVfit)
+}
+names(syntheticCVfit) <- c("ROC", "Sens", "Spec")
+
+kitchenSinkModel <- creditModel
+
+syntheticCVfitResults <- rbind(c(ROC = mean(syntheticCVfit$ROC), Sens = mean(syntheticCVfit$Sens), Spec = mean(syntheticCVfit$Spec)), data.frame())
+names(syntheticCVfit) <- c("ROC", "Sens", "Spec")
+gathered <- gather(syntheticCVfitResults, metric, mean)
+gathered[1,1] <- "ROC"
+gathered[2,1] <- "Sens"
+gathered[3,1] <- "Spec"
+
+syntheticCVfit %>%
+  gather(metric, value) %>%
+  left_join(gathered) %>%
+  ggplot(aes(value)) + 
+  geom_histogram(bins=35, fill = "#FF006A") +
+  facet_wrap(~metric) +
+  geom_vline(aes(xintercept = mean), colour = "#981FAC", linetype = 3, size = 1.5) +
+  scale_x_continuous(limits = c(0, 1)) +
+  labs(x="Goodness of Fit", y="Count", title="CV Goodness of Fit Metrics",
+       subtitle = "Across-fold mean reprented as dotted lines")
+
+```
+
+Note that the sensitivity (true positive percentage) of this model is approximately 25%.  This model is highly generalizable:  it performs similarly across 100 subsets of the data.
+
+### My Model
+
+Now I build my model:
+
+**Figure 8. My model's ROC, sensitivity, and specificity.**
+
+```{r bargraph8}
+
+#################################################
+# Prepare training and test data for new model. #
+#################################################
+
+syntheticCVfit <- data.frame()
+
+for (i in c(1:100)) {
+  # Choose random numbers between 1 and nrow(credit).
+  indices <- floor(runif(floor(0.65 * nrow(credit)), min = 1, max = nrow(credit)))
+  
+  creditTrain <- credit[ indices,]
+  creditTest  <- credit[-indices,]
+  
+  # Create a basic logistic regression model.
+  
+  creditModel <- glm(
+    credit ~ previous + unemploy_rate +
+      inflation_rate + poutcome_success +
+      repairsLT5050 + campaignGTE11 + unemploy_rate_pos, 
+    data = creditTrain,
+    family = "binomial" (link = "logit")
+  )
+  
+  # Predict values given credit model.
+  testProbs <- data.frame(
+    Outcome = as.factor(creditTest$credit),
+    Probs = predict(creditModel, creditTest, type= "response")
+  )
+  testProbs <- testProbs %>% mutate(predictedOutcome  = as.factor(ifelse(testProbs$Probs > 0.14, TRUE, FALSE))) # Choose a cutoff in the ifelse.
+  
+  # Visualize of sensitivity and specificity of model.  Should outperform 20% specificity.
+  confMatrix <- caret::confusionMatrix(testProbs$predictedOutcome, testProbs$Outcome, 
+                         positive = "TRUE")
+  roc <- auc(testProbs$Outcome, testProbs$Probs)
+  sensitivity <- confMatrix$byClass[1]
+  specificity <- confMatrix$byClass[2]
+  syntheticCVfit <- rbind(c(ROC = roc, Sensitivity = sensitivity, Specificity = specificity), syntheticCVfit)
+}
+names(syntheticCVfit) <- c("ROC", "Sens", "Spec")
+
+syntheticCVfitResults <- rbind(c(ROC = mean(syntheticCVfit$ROC), Sens = mean(syntheticCVfit$Sens), Spec = mean(syntheticCVfit$Spec)), data.frame())
+names(syntheticCVfit) <- c("ROC", "Sens", "Spec")
+gathered <- gather(syntheticCVfitResults, metric, mean)
+gathered[1,1] <- "ROC"
+gathered[2,1] <- "Sens"
+gathered[3,1] <- "Spec"
+
+syntheticCVfit %>%
+  gather(metric, value) %>%
+  left_join(gathered) %>%
+  ggplot(aes(value)) + 
+  geom_histogram(bins=35, fill = "#FF006A") +
+  facet_wrap(~metric) +
+  geom_vline(aes(xintercept = mean), colour = "#981FAC", linetype = 3, size = 1.5) +
+  scale_x_continuous(limits = c(0, 1)) +
+  labs(x="Goodness of Fit", y="Count", title="CV Goodness of Fit Metrics",
+       subtitle = "Across-fold mean reprented as dotted lines")
+
+```
+
+I note that my model can predict a far higher percentage of true positive values at the expense of approximately 15% less accuracy in the prediction of true negative values.  Furthermore, it is less generalizable than the kitchen sink model, given significantly wider ranges of sensitivity and specificity. 
+
+Here is a look at the regression summary for the Kitchen Sink Model: 
+
+```{r regression_summary1}
+summary(kitchenSinkModel)
+```
+
+and my model:
+
+```{r regression_summary2}
+summary(creditModel)
+```
+
+My selected features and newly engineered features have added a large amount of predictive power to the model, as demonstrated by its much higher sensitivity at relatively low cost to specificity compared to the baseline model.
+
+# ROC Curve
+
+I now seek to visualize and analyze the tradeoff between sensitivity and specificity more rigorously.
+
+**Figure 9. My model's ROC curve.**
+
+```{r roc_curve}
+
+#############################
+### Output an ROC curve.  ###
+#############################
+
+ggplot(testProbs, aes(d = as.numeric(testProbs$Outcome), m = Probs)) +
+  geom_roc(n.cuts = 50, labels = FALSE, colour = "#FE9900") +
+  style_roc(theme = theme_grey) +
+  geom_abline(slope = 1, intercept = 0, size = 1.5, color = 'grey') +
+  labs(title = "ROC Curve - My Logistic Regression Model")
+
+```
+
+Note that the baseline model allowed up to predict around 25% sensitivity at 98% specificity.  The ROC curve illustrates that we can exchange around 6-7% of specificity in order to gain almost 25% in sensitivity.  In other words, we can admit a few false positives in order to admit a much larger amount of true positives.
+
+Furthermore, the ROC curve is not significantly close to the axes nor the center line - indicating that the model is fairly neither underfit nor overfit.  In other words, it is likely to generalize fairly well to other datasets.
+
+# Cost-Benefit Analysis
+
+Having confirmed the effectiveness of this model, I now ask the question:  what tradeoff between sensitivity and specificity is the best for the city?  To answer this question using the data, I calculate the revenue per type of homeowner:  targeted and enrolls, not targeted and enrolls, targeted and doesn't enroll, and not targeted and doesn't enroll.
+
+### Costs and Benefits
+
+The HCD is willing to spend $2850 per homeowner for marketing. A prior survey indicates approximately 80% of eligible homeowners I predict to take the credit will take the credit. The remainder will receive the marketing allocation but do not take the credit.
+
+The credit costs \$5000 per homeowner. Academic reseachers in Philadelphia evaluated the credit program and found that homeowners that used the credit sold their homes after repairs at a \$10,000 premium. Homes surrounding the their home saw an aggregate premium of \$56,000.
+
+As such:
+
+```{r kable1}
+
+#############################
+### Cost benefit analysis ###
+#############################
+
+cost_benefit_table <-
+  testProbs %>%
+  count(predictedOutcome, Outcome) %>%
+  summarize(True_Negative = sum(n[predictedOutcome==FALSE & Outcome==FALSE]),
+            True_Positive = sum(n[predictedOutcome==TRUE & Outcome==TRUE]),
+            False_Negative = sum(n[predictedOutcome==FALSE & Outcome==TRUE]),
+            False_Positive = sum(n[predictedOutcome==TRUE & Outcome==FALSE])) %>%
+  gather(Variable, Count) %>%
+  mutate(Revenue =
+           ifelse(Variable == "True_Negative", 0,
+                  ifelse(Variable == "True_Positive",(-2850 * Count * .2 + (.8 * Count * (-2850 - 5000 + 10000 + 56000))),
+                         ifelse(Variable == "False_Negative", 0,
+                                ifelse(Variable == "False_Positive", -2850 * Count, 0))))) %>%
+  bind_cols(data.frame(Description = c(
+    "We predicted no enrollment and we didn't market program",
+    "We predicted enrollment, marketed program, and customer enrolled",
+    "We predicted no enrollment, didn't market, and customer didn't enroll",
+    "We predicted enrollment, marketed, and customer didn't enroll")))
+
+kable(cost_benefit_table,
+      caption = "Cost/Benefit Table") %>% kable_styling()
+
+```
+
+Note that we assume that homeowners we do not market to will not enroll due to a lack of knowledge of the program, even if, with knowledge, they would have enrolled.
+
+### Optimizing the Model
+
+Clearly this model has the potential to generate significant value for the city.
+
+Now I seek to identify the threshold at which I should guess that a homeowner will enroll.  In other words, if I am 20% certain, should I guess affirmatively?  What if I am 30% certain?  Since the city derives so much benefit from issuing credit to homeowners, I may be able to extract more value from accepting many homeowners at only a small level of certainty - even if that appears counterintuitive at first glance.
+
+Here, I take a look at each possible threshold of certainty:
+
+**Figure 10. My model's possible thresholds.**
+
+```{r scatterplot1}
+
+##########################
+### Try all thresholds ###
+##########################
+iterateThresholds <- function(data) {
+  x = .01
+  all_prediction <- data.frame()
+  while (x <= 1) {
+    
+    this_prediction <-
+      testProbs %>%
+      mutate(predictedOutcome = ifelse(Probs > x, 1, 0)) %>%
+      count(predictedOutcome, Outcome) %>%
+      summarize(True_Negative = sum(n[predictedOutcome==FALSE & Outcome==FALSE]),
+                True_Positive = sum(n[predictedOutcome==TRUE & Outcome==TRUE]),
+                False_Negative = sum(n[predictedOutcome==FALSE & Outcome==TRUE]),
+                False_Positive = sum(n[predictedOutcome==TRUE & Outcome==FALSE])) %>%
+      gather(Variable, Count) %>%
+      mutate(Revenue =
+               ifelse(Variable == "True_Negative", 0,
+                      ifelse(Variable == "True_Positive",(-2850 * Count * .2 + (.8 * Count * (-2850 - 5000 + 10000 + 56000))),
+                             ifelse(Variable == "False_Negative", 0,
+                                    ifelse(Variable == "False_Positive", -2850 * Count, 0)))),
+             Threshold = x)
+    
+    all_prediction <- rbind(all_prediction, this_prediction)
+    x <- x + .01
+  }
+  return(all_prediction)
+}
+
+whichThreshold <- iterateThresholds(testProbs)
+
+whichThreshold %>%
+  ggplot(.,aes(Threshold, Revenue, colour = Variable)) +
+  geom_point() +
+  scale_colour_manual(values = palette5[c(5, 1:3)]) +    
+  labs(title = "Revenue by confusion matrix type and threshold cut off",
+       y="Revenue") +
+  guides(colour=guide_legend(title="Confusion Matrix"))
+
+```
+
+This interesting plot shows several pieces of information.  Vertically, I can see the revenue generated by type of homeowner.  Horizontally, I can see this revenue change as the threshold increases.  I want to identify the threshold with the greatest net positive revenue. Visually, I suspect that an increase in the threshold will cut costs but also cut revenues.  To identify the best threshold, I see the results of a more informative plot:
+
+**Figure 11. My model's net benefit per possible threshold.**
+
+```{r scatterplot2}
+
+whichThreshold_revenue <- 
+  whichThreshold %>% 
+  mutate(Total_Count_of_Credits = ifelse(Variable == "True_Positive", Count, 0)) %>% 
+  group_by(Threshold) %>% 
+  summarize(Revenue = sum(Revenue), Total_Count_of_Credits = sum(Total_Count_of_Credits))
+
+whichThreshold_revenue %>%
+  dplyr::select(Threshold, Revenue) %>%
+  gather(Variable, Value, -Threshold) %>%
+  ggplot(aes(Threshold, Value, colour = Variable)) +
+  geom_point() +
+  geom_vline(xintercept = pull(arrange(whichThreshold_revenue, -Revenue)[1,1])) +
+  scale_colour_manual(values = palette2) +
+  ylim(0,6500000) +
+  labs(title = "Net benefit by threshold",
+       subtitle = "Benefit from enrollment minus costs of marketing to enrolled and non-enrolled.\nVertical line denotes optimal threshold.")
+
+```
+
+Finally, I identify a clear threshold that maximizes the net benefit to the city.  Here are some more details, compared to a baseline 50% threshold:
+
+```{r kable2}
+store <- whichThreshold_revenue %>%
+  dplyr::select(Threshold, Revenue) %>%
+  gather(Variable, Value, -Threshold)
+
+brief_table <- whichThreshold_revenue[c(which(store$Value == max(store$Value))[1],50),]
+brief_table <- cbind(Threshold_Type = c("Optimal_Threshold", "50%_Threshold"), brief_table)
+
+kable(brief_table,
+      caption = "Net Benefit Table") %>% kable_styling()
+```
+
+# Conclusion
+
+Notice that at face value, I am predicting enrollment with only a small (average) certainty that any given homeowner will or will not enroll in the program.  However, I have compiled a firm understanding of the costs and benefits of marketing this program to homeowners in the city of Philadelphia, and my certainty is built from a rigorous predictive model. 
+
+This model is far from ready to put into production.  This model may, without discriminatory intent, predict more often that certain social groups should receive marketing materials.  This could result in unequal opportunity to access affordable capital and the benefits of its investment to different populations across the city.
+
+This model would greatly benefit from a deeper dive into the possible predictive features this model could use.  Several of my predictive features were rudimentary manipulations of the existing data, and none used combinations of different features to engineer new features.  A more comprehensive effort to predict homeowner enrollment could benefit from more detailed administrative data, both from the HCD and relevant sister departments.
+
+Finally, I note that current marketing efforts use staff and resources to facilitate mailers, phone calls, and information and counseling sessions at the HCD offices.  In order to improve response rates, future campaigns could meet community members in their communities to advocate for this program and to encourage past and present enrolled members to advocate for the program.  Data is only one of many avenues through which a city can act to better connect with and serve its residents.
