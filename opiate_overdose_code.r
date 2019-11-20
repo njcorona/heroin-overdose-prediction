@@ -58,7 +58,24 @@ nn_function <- function(measureFrom,measureTo,k) {
   return(output)  
 }
 
+######################################################################################
+           #############################
+           # Loading data from online. #
+           #############################
+######################################################################################
 
+# ems <- read.socrata("https://data.cincinnati-oh.gov/resource/vnsz-a3wp.csv") 
+# saveRDS(ems, "ems.RDS")
+ems <- read_rds("ems.RDS")
+
+# %>%
+  # mutate(year = substr(creation_date,1,4)) %>%
+  # filter(year == "2017") %>%
+  # dplyr::select(Y = latitude, X = longitude) %>%
+  # na.omit() %>%
+  # st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
+  # st_transform(st_crs(fishnet)) %>%
+  # mutate(Legend = "Abandoned_Cars")
 
 
 
