@@ -1,0 +1,6 @@
+Project option 1 – Predict heroin overdose events in Cincinnati, Ohio to better allocate prevention resources
+
+The City of Cincinnati very recently released a dataset of heroin overdose locations. Using these data extracted from the Cincinnati EMS Open Data, your job will be to estimate a geospatial risk prediction model, predicting overdoses as a function of environmental factors like crime, 311 and inspections. You should validate your model against a kernel density as we have did in class. Also, you should try to train your model from one time period (long enough to have enough data) and test it on an out of out of sample test set time period (the following year, for instance). 
+
+Think critically about how you might offer these predictions to a public health official in your app. What do they want to know? Also remember that while your predictions are about overdose, it may be safe to assume that these are also places where people are just using heroin.
+
