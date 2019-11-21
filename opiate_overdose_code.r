@@ -59,24 +59,60 @@ nn_function <- function(measureFrom,measureTo,k) {
 }
 
 ######################################################################################
-           #############################
-           # Loading data from online. #
-           #############################
+#############################
+# Loading data from online. #
+#############################
 ######################################################################################
 
 # ems <- read.socrata("https://data.cincinnati-oh.gov/resource/vnsz-a3wp.csv") 
 # saveRDS(ems, "ems.RDS")
-ems <- read_rds("ems.RDS")
+#
+# drugs_cops <- read.socrata("https://data.cincinnati-oh.gov/resource/3gx7-se9a.csv")
+# saveRDS(drugs_cops, "drugs_cops.RDS")
+#
+# heroin_cops <- read.socrata("https://data.cincinnati-oh.gov/resource/7mtn-nnb5.csv")
+# saveRDS(heroin_cops, "heroin_cops.RDS")
+#
+# cops <- read.socrata("https://data.cincinnati-oh.gov/resource/gexm-h6bt.csv")
+# saveRDS(cops, "cops.RDS")
+#
+# crimes <- read.socrata("https://data.cincinnati-oh.gov/resource/k59e-2pvf.csv")
+# saveRDS(crimes, "crimes.RDS")
+#
+# c311 <- read.socrata("https://data.cincinnati-oh.gov/resource/4cjh-bm8b.csv")
+# saveRDS(c311, "c311.RDS")
+#
+# code <- read.socrata("https://data.cincinnati-oh.gov/resource/cncm-znd6.csv")
+# saveRDS(code, "code.RDS")
+#
+# cincinnati <- st_read("https://opendata.arcgis.com/datasets/ed78f4754b044ac5815d0a9efe9bb336_1.geojson")
+# saveRDS(cincinnati, "cincinnati.RDS")
 
-# %>%
-  # mutate(year = substr(creation_date,1,4)) %>%
-  # filter(year == "2017") %>%
-  # dplyr::select(Y = latitude, X = longitude) %>%
-  # na.omit() %>%
-  # st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-  # st_transform(st_crs(fishnet)) %>%
-  # mutate(Legend = "Abandoned_Cars")
+######################################################################################
+################################
+# Loading data from RDS files. #
+################################
+######################################################################################
 
+ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls.
+ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
+
+drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
+heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
+# cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
+# crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
+# c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
+# code <- read_rds("code.RDS) %>% as_tibble() # Code enforcement.
+cincinnati <- read_rds("cincinnati.RDS") # Cincinnati city boundary shapefile.
+
+######################################################################################
+#########################
+# Basic visualizations. #
+#########################
+######################################################################################
+
+# Cincinnati border.
+ggplot() + geom_sf(data = cincinnati)
 
 
 
