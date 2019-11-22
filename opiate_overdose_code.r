@@ -102,6 +102,12 @@ nn_function <- function(measureFrom,measureTo,k) {
 # 
 # sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
 # saveRDS(sheriff, "sheriff.RDS")
+#
+# Still figuring out how to scrape this data -- but there is a map of naloxone access 
+# sites in Hamilton County on this website (https://takechargeohio.org/map) and a list of
+# addiction and substance use disorder treatment providers (specifically for opioids or
+# heroin) on this site 
+# (https://www.emeraldjennyfoundation.org/listings/?fwp_location=39.1031182%2C-84.51201960000003%2C25%2CCincinnati%252C%2520OH%252C%2520USA&fwp_category=opioid-or-heroin-specific-addiction)
 
 ######################################################################################
 ################################
@@ -144,7 +150,9 @@ sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
 # 
 # # Hamilton County sheriff stations.
 # ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
-
+#
+# # Hamilton County naloxone distribution sites 
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = nalox)
 
 ######################################################################################
 #########################################
@@ -171,7 +179,10 @@ heroin_ems <- ems[which(
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant")
 
 
-ggplot() + geom_sf(data = cincinnati) + geom_sf(data = heroin_ems[1:1000,])
+ggplot() + 
+  geom_sf(data = cincinnati) + 
+  geom_sf(data = heroin_ems[1:1000,]) +
+  mapTheme()
 
 
 
