@@ -6,6 +6,7 @@
 
 # Load packages, data, colors etc ---------------------------------
 
+library(here)
 library(tidyverse)
 library(sf)
 library(QuantPsyc)
@@ -111,7 +112,9 @@ nn_function <- function(measureFrom,measureTo,k) {
 ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls.
 drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
 heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
-cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
+#cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
+  # Note -- I'm not seeing this dataset on Git. It looks like it's 2.9 million rows. 
+  # Is it helpful enough to justify the computational time for loading it into R?
 crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
 c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
 code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement.
