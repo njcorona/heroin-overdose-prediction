@@ -20,6 +20,8 @@ library(gridExtra)
 library(knitr)
 library(kableExtra)
 library(tidycensus)
+library(stringr)
+library(lubridate)
 
 mapTheme <- function(base_size = 12) {
   theme(
@@ -107,8 +109,6 @@ nn_function <- function(measureFrom,measureTo,k) {
 ######################################################################################
 
 ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls.
-ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
-
 drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
 heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
 cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
@@ -122,35 +122,53 @@ firehouses <- read_rds("firehouses.RDS") # Firehouses.
 sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
 
 ######################################################################################
-#########################
-# Basic visualizations. #
-#########################
+############################################
+# Basic boundary and point visualizations. #
+############################################
 ######################################################################################
 
-# Cincinnati border.
-ggplot() + geom_sf(data = cincinnati)
-
-# Cincinnati neighborhoods.
-ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna)
-
-# Cincinatti police districts.
-ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops)
-
-# Hamilton County firehouses.
-ggplot() + geom_sf(data = cincinnati) + geom_sf(data = firehouses)
-
-# Hamilton County sheriff stations.
-ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
-
-
+# # Cincinnati border.
+# ggplot() + geom_sf(data = cincinnati)
+# 
+# # Cincinnati neighborhoods.
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna)
+# 
+# # Cincinatti police districts.
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops)
+# 
+# # Hamilton County firehouses.
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = firehouses)
+# 
+# # Hamilton County sheriff stations.
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
 
 
+######################################################################################
+#########################################
+# Basic cleaning and data manipulation. #
+#########################################
+######################################################################################
+
+ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
+ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
+ems15 <- ems[which(ems$year == "2015"),]
+ems17 <- ems[which(ems$year == "2017"),]
+
+# Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage,
+# used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries.
+# Nick also went through manually to confirm that the data dictionary doesn't miss any heroin-related incidents.
+heroin_ems <- ems[which(
+    str_detect(ems$disposition_text, "NAR") |
+    str_detect(ems$disposition_text, "NART") |
+    ems$incident_type_id == "HEROINF - FIRE ONLY" |
+    ems$incident_type_id == "HEROIN-COMBINED" |
+    ems$incident_type_id == "HEROINF-FIRE ONLY" |
+    ems$incident_type_id == "HERONF" |
+    ems$incident_type_id == "HEORIF"), ] %>% 
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant")
 
 
-
-
-
-
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = heroin_ems[1:1000,])
 
 
 
