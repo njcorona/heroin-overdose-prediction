@@ -75,18 +75,30 @@ nn_function <- function(measureFrom,measureTo,k) {
 #
 # cops <- read.socrata("https://data.cincinnati-oh.gov/resource/gexm-h6bt.csv")
 # saveRDS(cops, "cops.RDS")
-#
+# 
 # crimes <- read.socrata("https://data.cincinnati-oh.gov/resource/k59e-2pvf.csv")
 # saveRDS(crimes, "crimes.RDS")
-#
+# 
 # c311 <- read.socrata("https://data.cincinnati-oh.gov/resource/4cjh-bm8b.csv")
 # saveRDS(c311, "c311.RDS")
-#
+# 
 # code <- read.socrata("https://data.cincinnati-oh.gov/resource/cncm-znd6.csv")
 # saveRDS(code, "code.RDS")
 #
 # cincinnati <- st_read("https://opendata.arcgis.com/datasets/ed78f4754b044ac5815d0a9efe9bb336_1.geojson")
 # saveRDS(cincinnati, "cincinnati.RDS")
+# 
+# sna <- st_read("https://opendata.arcgis.com/datasets/572561553c9e4d618d2d7939c5261d46_0.geojson")
+# saveRDS(sna, "sna.RDS")
+# 
+# districts_cops <- st_read("https://opendata.arcgis.com/datasets/9bc1afaff72e4f44a6d19280c159c951_4.geojson")
+# saveRDS(districts_cops, "districts_cops.RDS")
+# 
+# firehouses <- st_read("https://opendata.arcgis.com/datasets/a6f043d181f94e37a274975a3718b7af_16.geojson")
+# saveRDS(firehouses, "firehouses.RDS")
+# 
+# sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
+# saveRDS(sheriff, "sheriff.RDS")
 
 ######################################################################################
 ################################
@@ -99,11 +111,15 @@ ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distribu
 
 drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
 heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
-# cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
-# crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
-# c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
-# code <- read_rds("code.RDS) %>% as_tibble() # Code enforcement.
+cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
+crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
+c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
+code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement.
 cincinnati <- read_rds("cincinnati.RDS") # Cincinnati city boundary shapefile.
+sna <- read_rds("sna.RDS") # Cincinnati SNA (Statistical Neighborhood Approximations) Boundaries
+districts_cops <- read_rds("districts_cops.RDS") # Police districts.
+firehouses <- read_rds("firehouses.RDS") # Firehouses.
+sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
 
 ######################################################################################
 #########################
@@ -113,6 +129,19 @@ cincinnati <- read_rds("cincinnati.RDS") # Cincinnati city boundary shapefile.
 
 # Cincinnati border.
 ggplot() + geom_sf(data = cincinnati)
+
+# Cincinnati neighborhoods.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna)
+
+# Cincinatti police districts.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops)
+
+# Hamilton County firehouses.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = firehouses)
+
+# Hamilton County sheriff stations.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
+
 
 
 
