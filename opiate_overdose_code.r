@@ -120,16 +120,19 @@ heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above
 crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
 c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
 code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement.
-cincinnati <- read_rds("cincinnati.RDS") # Cincinnati city boundary shapefile.
-sna <- read_rds("sna.RDS") # Cincinnati SNA (Statistical Neighborhood Approximations) Boundaries
-districts_cops <- read_rds("districts_cops.RDS") # Police districts.
-firehouses <- read_rds("firehouses.RDS") # Firehouses.
-sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
+cincinnati <- read_rds("cincinnati.RDS") %>% st_transform(3735) # Cincinnati city boundary shapefile.
+sna <- read_rds("sna.RDS") %>% st_transform(3735) # Cincinnati SNA (Statistical Neighborhood Approximations) Boundaries
+districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts.
+firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
+sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
 nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735) # naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
+  # note this was manually geocoded
 hamilton <- st_read("tl_2014_39061_roads.shp") %>%
-  st_transform(3735)
+  st_transform(3735) # Hamilton county lines (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
+vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings ordered vacant by the city because unsafe, need to be demolished, etc (source: http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
+  # Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
 
 ######################################################################################
 ############################################
@@ -138,23 +141,31 @@ hamilton <- st_read("tl_2014_39061_roads.shp") %>%
 ######################################################################################
 
 # # Cincinnati border.
-# ggplot() + geom_sf(data = cincinnati)
+# ggplot() + geom_sf(data = cincinnati) + mapTheme()
 # 
 # # Cincinnati neighborhoods.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna)
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna) + mapTheme()
 # 
 # # Cincinatti police districts.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops)
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops) + mapTheme()
 # 
 # # Hamilton County firehouses.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = firehouses)
-# 
-# # Hamilton County sheriff stations.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
-#
-# # Cincinnati city limits inside Hamilton County
 # ggplot() + 
 #   geom_sf(data = hamilton) + 
+#   geom_sf(data = cincinnati) + 
+#   geom_sf(data = firehouses) + 
+#   mapTheme()
+# 
+# # Hamilton County sheriff stations.
+# ggplot() + 
+#   geom_sf(data = hamilton) + 
+#   geom_sf(data = cincinnati) + 
+#   geom_sf(data = sheriff) + 
+#   mapTheme()
+# 
+# # Cincinnati city limits inside Hamilton County
+# ggplot() +
+#   geom_sf(data = hamilton) +
 #   geom_sf(data = cincinnati) +
 #   mapTheme()
 
@@ -164,6 +175,7 @@ hamilton <- st_read("tl_2014_39061_roads.shp") %>%
 #########################################
 ######################################################################################
 
+# (1) Outcome of interest: heroin overdose 
 ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
 ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
 ems15 <- ems[which(ems$year == "2015"),]
@@ -187,7 +199,7 @@ ggplot() +
   geom_sf(data = cincinnati) + 
   geom_sf(data = heroin_ems[1:1000,]) +
   labs(title="Heroin-related incidents",
-       subtitle = "Cincinnati, OH")
+       subtitle = "Cincinnati, OH") +
   mapTheme()
 
 # Need to fix legend, but this map feels nifty at making the case for more strategic 
@@ -203,9 +215,34 @@ ggplot() +
        subtitle = "Cincinnati, OH") +
   mapTheme()
 
+# (2) drugs_cops
+drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
 
+# (3) heroin_cops
+heroin_cops <- heroin_cops[!is.na(heroin_cops$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
 
+# (4) crimes
+crimes <- crimes[!is.na(crimes$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
 
+# (5) c311
+c311 <- c311[!is.na(c311$latitude), ] %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+# (6) code
+code <- code %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+unique(code$comp_type_desc)
+
+abandoned_vehicles <- code %>% dplyr::filter(
+  comp_type_desc == "Abandoned Vehicle Code Enforcement")
 
 
 
