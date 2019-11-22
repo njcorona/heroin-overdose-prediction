@@ -61,6 +61,8 @@ nn_function <- function(measureFrom,measureTo,k) {
   return(output)  
 }
 
+palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
+
 ######################################################################################
 #############################
 # Loading data from online. #
@@ -102,12 +104,6 @@ nn_function <- function(measureFrom,measureTo,k) {
 # 
 # sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
 # saveRDS(sheriff, "sheriff.RDS")
-#
-# Still figuring out how to scrape this data -- but there is a map of naloxone access 
-# sites in Hamilton County on this website (https://takechargeohio.org/map) and a list of
-# addiction and substance use disorder treatment providers (specifically for opioids or
-# heroin) on this site 
-# (https://www.emeraldjennyfoundation.org/listings/?fwp_location=39.1031182%2C-84.51201960000003%2C25%2CCincinnati%252C%2520OH%252C%2520USA&fwp_category=opioid-or-heroin-specific-addiction)
 
 ######################################################################################
 ################################
@@ -129,6 +125,11 @@ sna <- read_rds("sna.RDS") # Cincinnati SNA (Statistical Neighborhood Approximat
 districts_cops <- read_rds("districts_cops.RDS") # Police districts.
 firehouses <- read_rds("firehouses.RDS") # Firehouses.
 sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
+nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735) # naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
+hamilton <- st_read("tl_2014_39061_roads.shp") %>%
+  st_transform(3735)
 
 ######################################################################################
 ############################################
@@ -151,8 +152,11 @@ sheriff <- read_rds("sheriff.RDS") # Sheriff stations.
 # # Hamilton County sheriff stations.
 # ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sheriff)
 #
-# # Hamilton County naloxone distribution sites 
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = nalox)
+# # Cincinnati city limits inside Hamilton County
+# ggplot() + 
+#   geom_sf(data = hamilton) + 
+#   geom_sf(data = cincinnati) +
+#   mapTheme()
 
 ######################################################################################
 #########################################
@@ -176,18 +180,28 @@ heroin_ems <- ems[which(
     ems$incident_type_id == "HEROINF-FIRE ONLY" |
     ems$incident_type_id == "HERONF" |
     ems$incident_type_id == "HEORIF"), ] %>% 
-  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant")
-
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
 
 ggplot() + 
   geom_sf(data = cincinnati) + 
   geom_sf(data = heroin_ems[1:1000,]) +
+  labs(title="Heroin-related incidents",
+       subtitle = "Cincinnati, OH")
   mapTheme()
 
-
-
-
-
+# Need to fix legend, but this map feels nifty at making the case for more strategic 
+# resource deployment:
+ggplot() + 
+  geom_sf(data = hamilton) + 
+  geom_sf(data = cincinnati) +
+  geom_sf(data = heroin_ems[1:1000,],
+          aes(colour = "Heroin overdose")) +
+  geom_sf(data = nalox_sites, 
+          aes(colour = "Naloxone distribution site")) +
+  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+       subtitle = "Cincinnati, OH") +
+  mapTheme()
 
 
 
