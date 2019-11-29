@@ -117,6 +117,8 @@ heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above
 #cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
   # Note -- I'm not seeing this dataset on Git. It looks like it's 2.9 million rows. 
   # Is it helpful enough to justify the computational time for loading it into R?
+  # It might be, but I doubt it.  The drugs and heroin subsets should have all of the relevant occurrence data,
+  # but we'll likely need some of this data for correlated factors.
 crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
 c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
 code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement.
@@ -129,10 +131,15 @@ nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735) # naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
   # note this was manually geocoded
-hamilton <- st_read("tl_2014_39061_roads.shp") %>%
+hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
   st_transform(3735) # Hamilton county lines (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
 vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings ordered vacant by the city because unsafe, need to be demolished, etc (source: http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
   # Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
+ohio_counties <- st_read("tl_2016_39_cousub.shp") # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
+hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
+  st_transform(3735)
+
+
 
 ######################################################################################
 ############################################
@@ -140,34 +147,43 @@ vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings order
 ############################################
 ######################################################################################
 
-# # Cincinnati border.
-# ggplot() + geom_sf(data = cincinnati) + mapTheme()
-# 
-# # Cincinnati neighborhoods.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna) + mapTheme()
-# 
-# # Cincinatti police districts.
-# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops) + mapTheme()
-# 
-# # Hamilton County firehouses.
-# ggplot() + 
-#   geom_sf(data = hamilton) + 
-#   geom_sf(data = cincinnati) + 
-#   geom_sf(data = firehouses) + 
-#   mapTheme()
-# 
-# # Hamilton County sheriff stations.
-# ggplot() + 
-#   geom_sf(data = hamilton) + 
-#   geom_sf(data = cincinnati) + 
-#   geom_sf(data = sheriff) + 
-#   mapTheme()
-# 
-# # Cincinnati city limits inside Hamilton County
-# ggplot() +
-#   geom_sf(data = hamilton) +
-#   geom_sf(data = cincinnati) +
-#   mapTheme()
+# Cincinnati border.
+ggplot() + geom_sf(data = cincinnati) + mapTheme()
+
+# Cincinnati neighborhoods.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna) + mapTheme()
+
+# Cincinatti police districts.
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = districts_cops) + mapTheme()
+
+# Cincinatti neighborhoods (SNAs).
+ggplot() + geom_sf(data = cincinnati) + geom_sf(data = sna) + mapTheme()
+
+# Hamilton County naloxone sites.
+ggplot() + geom_sf(data = hamilton) + geom_sf(data = cincinnati) + geom_sf(data = nalox_sites) + mapTheme()
+
+# Hamilton County streets - long time to load.
+ggplot() + geom_sf(data = hamilton) + geom_sf(data = hamilton_streets) + mapTheme()
+
+# Hamilton County firehouses.
+ggplot() +
+  geom_sf(data = hamilton) +
+  geom_sf(data = cincinnati) +
+  geom_sf(data = firehouses) +
+  mapTheme()
+
+# Hamilton County sheriff stations.
+ggplot() +
+  geom_sf(data = hamilton) +
+  geom_sf(data = cincinnati) +
+  geom_sf(data = sheriff) +
+  mapTheme()
+
+# Cincinnati city limits inside Hamilton County
+ggplot() +
+  geom_sf(data = hamilton) +
+  geom_sf(data = cincinnati) +
+  mapTheme()
 
 ######################################################################################
 #########################################
