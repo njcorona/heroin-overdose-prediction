@@ -279,7 +279,11 @@ c311 <- c311[!is.na(c311$latitude), ] %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+# Broad category.
 unique(sapply(str_split(c311$service_name, ","), function(x) {x[[1]]})) # Do not delete this.
+
+# Subcategory of the broad category.
+unique(sapply(str_split(c311$service_name, ","), function(x) {unlist(x)[2]})) # Do not delete this.
 
 unique(sapply(str_split(c311$service_name, ","), 
               function(x) {x[[1]]}))[which(str_detect(
@@ -326,7 +330,7 @@ cleanedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Clean
 # drugs_cops: 2017-01-01 to 2017-12-31
 
 # heroin_cops: 2015-07-17 to 2018-08-18
-light, graffiti
+
 # crimes: 2010-01-03 to 2019-11-20
 
 # c311: 2012-01-01 to 2019-11-20
