@@ -279,6 +279,24 @@ c311 <- c311[!is.na(c311$latitude), ] %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+unique(sapply(str_split(c311$service_name, ","), function(x) {x[[1]]})) # Do not delete this.
+
+unique(sapply(str_split(c311$service_name, ","), 
+              function(x) {x[[1]]}))[which(str_detect(
+                unique(sapply(str_split(c311$service_name, ","), 
+                              function(x) {x[[1]]})), "Graffiti"))]
+
+unique(sapply(str_split(c311$service_name, ","), 
+              function(x) {x[[1]]}))[which(str_detect(
+                unique(sapply(str_split(c311$service_name, ","), 
+                              function(x) {x[[1]]})), "Light"))]
+
+# Only for 2019 but I'm just curious whether it is correlated w/ overdoses.
+unique(sapply(str_split(c311$service_name, ","), 
+              function(x) {x[[1]]}))[which(str_detect(
+                unique(sapply(str_split(c311$service_name, ","), 
+                              function(x) {x[[1]]})), "Homeless"))]
+
 # (6) code
 code <- code %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
@@ -286,9 +304,12 @@ code <- code %>%
 
 unique(code$comp_type_desc)
 
-abandoned_vehicles <- code %>% dplyr::filter(
-  comp_type_desc == "Abandoned Vehicle Code Enforcement")
+abandoned_vehicles <- code %>% dplyr::filter(comp_type_desc == "Abandoned Vehicle Code Enforcement")
 
+# Might only want to use one of these if they're virtually the same.
+# Excludes description "Weed and Litter Complnt".
+complainedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Complaint")
+cleanedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Cleaning")
 
 ######################################################################################
 ##################################
@@ -305,7 +326,7 @@ abandoned_vehicles <- code %>% dplyr::filter(
 # drugs_cops: 2017-01-01 to 2017-12-31
 
 # heroin_cops: 2015-07-17 to 2018-08-18
-
+light, graffiti
 # crimes: 2010-01-03 to 2019-11-20
 
 # c311: 2012-01-01 to 2019-11-20
