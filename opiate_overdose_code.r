@@ -115,10 +115,10 @@ ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls.
 drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
 heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
 # cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
-  # Note -- I'm not seeing this dataset on Git. It looks like it's 2.9 million rows. 
-  # Is it helpful enough to justify the computational time for loading it into R?
-  # It might be, but I doubt it.  The drugs and heroin subsets should have all of the relevant occurrence data,
-  # but we'll likely need some of this data for correlated factors.
+# Note -- I'm not seeing this dataset on Git. It looks like it's 2.9 million rows. 
+# Is it helpful enough to justify the computational time for loading it into R?
+# It might be, but I doubt it.  The drugs and heroin subsets should have all of the relevant occurrence data,
+# but we'll likely need some of this data for correlated factors.
 crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported.
 c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls.
 code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement.
@@ -141,7 +141,7 @@ nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735) 
 
-# Hamilton county lines (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
+# Hamilton streets (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
 hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
   st_transform(3735) 
 
@@ -212,11 +212,24 @@ ems17 <- ems[which(ems$year == "2017"),]
 ems18 <- ems[which(ems$year == "2018"),]
 ems19 <- ems[which(ems$year == "2019"),]
 
+# These years only have 1-17 records per year.
+crimes <- crimes[which(str_sub(crimes$date_reported, start = 1, end = 4) != 1991 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2003 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2007 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2008 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2009
+),]
+
+# These years only have 74-310 records per year.
+code <- code[which(str_sub(code$entered_date, start = 1, end = 4) != 1999 &
+                     str_sub(code$entered_date, start = 1, end = 4) != 2000
+),]
+
 # Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage,
 # used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries.
 # Nick also went through manually to confirm that the data dictionary doesn't miss any heroin-related incidents.
 heroin_ems <- ems[which(
-    str_detect(ems$disposition_text, "NAR") |
+  str_detect(ems$disposition_text, "NAR") |
     str_detect(ems$disposition_text, "NART") |
     ems$incident_type_id == "HEROINF - FIRE ONLY" |
     ems$incident_type_id == "HEROIN-COMBINED" |
@@ -270,19 +283,45 @@ c311 <- c311[!is.na(c311$latitude), ] %>%
 code <- code %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
+
 unique(code$comp_type_desc)
 
 abandoned_vehicles <- code %>% dplyr::filter(
   comp_type_desc == "Abandoned Vehicle Code Enforcement")
 
 
+######################################################################################
+##################################
+# Date ranges.
+##################################
+######################################################################################
 
+# Sample code:
+# summary(as.Date(str_sub(crimes$date_reported, start = 1, end = 10)))
+# table(str_sub(code$entered_date, start = 1, end = 4))
+
+# ems: 2015-01-01 to 2019-11-20
+
+# drugs_cops: 2017-01-01 to 2017-12-31
+
+# heroin_cops: 2015-07-17 to 2018-08-18
+
+# crimes: 2010-01-03 to 2019-11-20
+
+# c311: 2012-01-01 to 2019-11-20
+
+# code: 2001-01-02 to 2019-11-20
+
+# heroin_ems: 2015-07-22 to 2019-11-19
+
+######################################################################################
 #############
 #############
 # Note: Most of this code is what I submitted for the risk analysis for crimes.  
 # I'll leave it in so I can adapt for this homework.
 #############
 #############
+######################################################################################
 
 chicagoBoundary <- 
   st_read("chicagoBoundary.shp") %>%
