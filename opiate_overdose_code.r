@@ -114,7 +114,7 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls.
 drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # TODO: this is a subset of all police data. confirm whether this is a reasonable subset or we want to pull in more data.
 heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # TODO: same as above - heroin is a subset of drugs dataset.
-#cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
+# cops <- read_rds("cops.RDS") %>% as_tibble() # Police calls (proactive and reactive)
   # Note -- I'm not seeing this dataset on Git. It looks like it's 2.9 million rows. 
   # Is it helpful enough to justify the computational time for loading it into R?
   # It might be, but I doubt it.  The drugs and heroin subsets should have all of the relevant occurrence data,
@@ -127,19 +127,31 @@ sna <- read_rds("sna.RDS") %>% st_transform(3735) # Cincinnati SNA (Statistical 
 districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts.
 firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
 sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
+
+
+######################################################################################
+##################################
+# Loading data downloaded files. #
+##################################
+######################################################################################
+
+# naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
+# note this was manually geocoded
 nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
-  st_transform(3735) # naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
-  # note this was manually geocoded
+  st_transform(3735) 
+
+# Hamilton county lines (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
 hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
-  st_transform(3735) # Hamilton county lines (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
+  st_transform(3735) 
+
+# Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
 vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings ordered vacant by the city because unsafe, need to be demolished, etc (source: http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
-  # Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
+
 ohio_counties <- st_read("tl_2016_39_cousub.shp") # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
+
 hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
   st_transform(3735)
-
-
 
 ######################################################################################
 ############################################
@@ -195,7 +207,10 @@ ggplot() +
 ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
 ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
 ems15 <- ems[which(ems$year == "2015"),]
+ems16 <- ems[which(ems$year == "2016"),]
 ems17 <- ems[which(ems$year == "2017"),]
+ems18 <- ems[which(ems$year == "2018"),]
+ems19 <- ems[which(ems$year == "2019"),]
 
 # Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage,
 # used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries.
@@ -211,25 +226,25 @@ heroin_ems <- ems[which(
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
-ggplot() + 
-  geom_sf(data = cincinnati) + 
-  geom_sf(data = heroin_ems[1:1000,]) +
-  labs(title="Heroin-related incidents",
-       subtitle = "Cincinnati, OH") +
-  mapTheme()
+# ggplot() + 
+#   geom_sf(data = cincinnati) + 
+#   geom_sf(data = heroin_ems[1:1000,]) +
+#   labs(title="Heroin-related incidents",
+#        subtitle = "Cincinnati, OH") +
+#   mapTheme()
 
 # Need to fix legend, but this map feels nifty at making the case for more strategic 
 # resource deployment:
-ggplot() + 
-  geom_sf(data = hamilton) + 
-  geom_sf(data = cincinnati) +
-  geom_sf(data = heroin_ems[1:1000,],
-          aes(colour = "Heroin overdose")) +
-  geom_sf(data = nalox_sites, 
-          aes(colour = "Naloxone distribution site")) +
-  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
-       subtitle = "Cincinnati, OH") +
-  mapTheme()
+# ggplot() + 
+#   geom_sf(data = hamilton) + 
+#   geom_sf(data = cincinnati) +
+#   geom_sf(data = heroin_ems[1:1000,],
+#           aes(colour = "Heroin overdose")) +
+#   geom_sf(data = nalox_sites, 
+#           aes(colour = "Naloxone distribution site")) +
+#   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+#        subtitle = "Cincinnati, OH") +
+#   mapTheme()
 
 # (2) drugs_cops
 drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
