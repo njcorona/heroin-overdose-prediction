@@ -23,6 +23,9 @@ library(kableExtra)
 library(tidycensus)
 library(stringr)
 library(lubridate)
+census_api_key("f4a1e79b1b513acf5523856785193ebfdecdd406") # This is my personal API key.
+                                                           # Please don't use it after  
+                                                           # this project concludes!
 
 mapTheme <- function(base_size = 12) {
   theme(
@@ -104,6 +107,80 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 # 
 # sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
 # saveRDS(sheriff, "sheriff.RDS")
+# 
+# # Census data
+# # Race from the 2010 US Census
+# racevars <- c(total_pop = "P003001",
+#               white = "P003002", 
+#               black = "P003003", 
+#               asian = "P003005", 
+#               hispanic = "P004003",
+#               two_or_more = "P003008")
+# censusRace <- get_decennial(geography = "tract", variables = racevars, state = 39, 
+#                             county = 061, geometry = TRUE) %>% st_transform(3735)
+# censusRace <- censusRace %>% 
+#   spread(key = variable, value = value) %>%
+#   mutate(prop_white = round(white/total_pop,4),
+#          prop_black = round(black/total_pop,4),
+#          prop_asian = round(asian/total_pop,4),
+#          prop_hispanic = round(hispanic/total_pop,4),
+#          prop_two = round(two_or_more/total_pop,4)) %>%
+#   gather("variable", "value", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, value, geometry)
+# st_write(censusRace, "censusRace.shp")
+
+# # Other place-related variables from the 2015 American Community Survey
+# v15 <- load_variables(2015, "acs5", cache = TRUE)
+# write_csv(v15,"acs_vars_2015.csv")
+# acsvars <- c(total_pop = "B01003_001",
+#                total_males = "B01001_002",
+#                males_18_19 = "B01001_007",
+#                males_20 = "B01001_008",
+#                males_21 = "B01001_009",
+#                males_22_24 = "B01001_010",
+#                males_25_29 = "B01001_011",
+#                males_30_34 = "B01001_012",
+#                males_35_39 = "B01001_013",
+#                males_40_44 = "B01001_014",
+#                males_45_49 = "B01001_015",
+#                males_50_54 = "B01001_016",
+#                males_55_59 = "B01001_017",
+#                males_60_61 = "B01001_018",
+#                males_62_64 = "B01001_019",
+#                males_65_66 = "B01001_020",
+#                males_67_69 = "B01001_021",
+#                males_70_74 = "B01001_022",
+#                males_75_79 = "B01001_023",
+#                males_80_84 = "B01001_024",
+#                males_85plus = "B01001_025",
+#                medincome = "B19013_001",
+#                per_capita_income = "B19301_001",
+#                total_blw_poverty_lvl = "B17020_002",
+#                median_home_value = "B25077_001",
+#                bachelors_or_higher = "B23006_023",
+#                unemployed_over_16yrs = "B23025_007"
+#                )
+# acsData <- get_acs(geography = "tract", 
+#                    variables = acsvars, 
+#                    state = 39, 
+#                    county = 061, 
+#                    geometry = TRUE) %>% st_transform(3735)
+# acsData <- acsData %>%
+#   dplyr::select(-moe) %>%
+#   spread(key = variable, value = estimate) %>%
+#   mutate(log_pop = log(total_pop),
+#          prop_males = round(total_males/total_pop,4), 
+#          prop_males_18to24 = round(sum(males_18_19,males_20,males_21,males_22_24)/total_males,4),
+#          prop_males_25to34 = round(sum(males_25_29,males_30_34)/total_males,4),
+#          prop_males_35to49 = round(sum(males_35_39,males_40_44,males_45_49)/total_males,4),
+#          prop_males_50to64 = round(sum(males_50_54,males_55_59,males_60_61,males_62_64)/total_males,4),
+#          prop_males_65up = round(sum(males_65_66,males_67_69,males_70_74,males_75_79,males_85plus)/total_males,4),
+#          prop_poverty = round(total_blw_poverty_lvl/total_pop,4),
+#          prop_bach_or_higher = round(bachelors_or_higher/total_pop,4),
+#          prop_unempl = round(unemployed_over_16yrs/total_pop,4)) %>%
+#   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, estimate, geometry)
+# st_write(acsData, "acsData.shp")
 
 ######################################################################################
 ################################
@@ -127,7 +204,8 @@ sna <- read_rds("sna.RDS") %>% st_transform(3735) # Cincinnati SNA (Statistical 
 districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts.
 firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
 sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
-
+censusRace <- st_read("censusRace.shp") # race/ethnicity counts and %s by census tract
+acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on Git, which is a spatial prediction model of heroin overdose in Cincy)
 
 ######################################################################################
 ##################################
