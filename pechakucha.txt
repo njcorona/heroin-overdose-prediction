@@ -1,0 +1,23 @@
+- should have:
+	- well thought out exploratory analysis
+	- good sense for the purpose of the predictions in the context of the use case
+	- what is the use case?
+	- who is the user?
+	- how does the app put the model into the hands of a non-technical decision maker?
+	- who is creating the app?
+	- have you created something that is usable by the client?
+
+- slide 1: what is the business as usual approach to the planning problem?
+- slide 2: what is the proposed data driven approach?
+- slide 3: what is the data?
+- slide 4: exploratory analysis (spatial process) <- what is spatial process? spatial trends?
+- slide 5: exploratory analysis
+- slide 6: how does the model work in theory? features, spatial process, etc
+- slide 7-9: app wireframes
+- slide 9 again: also conclusion
+
+- notes from the project option description
+	- "to better allocate prevention resources"
+	- think critically about how you might offer these predictions to a public health official in your app
+	- what do they want to know?
+	- keep in mind your predictions will be about overdoses but may also simply be places where people are using heroin
