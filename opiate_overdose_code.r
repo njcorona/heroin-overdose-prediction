@@ -317,6 +317,12 @@ heroin_ems <- ems[which(
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
+heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
+heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
+heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
+heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
+
 # ggplot() + 
 #   geom_sf(data = cincinnati) + 
 #   geom_sf(data = heroin_ems[1:1000,]) +
@@ -326,16 +332,16 @@ heroin_ems <- ems[which(
 
 # Need to fix legend, but this map feels nifty at making the case for more strategic 
 # resource deployment:
-# ggplot() + 
-#   geom_sf(data = hamilton) + 
-#   geom_sf(data = cincinnati) +
-#   geom_sf(data = heroin_ems[1:1000,],
-#           aes(colour = "Heroin overdose")) +
-#   geom_sf(data = nalox_sites, 
-#           aes(colour = "Naloxone distribution site")) +
-#   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
-#        subtitle = "Cincinnati, OH") +
-#   mapTheme()
+ggplot() +
+  geom_sf(data = hamilton) +
+  geom_sf(data = cincinnati) +
+  geom_sf(data = heroin_ems17[1:1000,],
+          aes(colour = "Heroin overdose")) +
+  geom_sf(data = nalox_sites,
+          aes(colour = "Naloxone distribution site")) +
+  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+       subtitle = "Cincinnati, OH") +
+  mapTheme()
 
 # (2) drugs_cops
 drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
@@ -416,6 +422,37 @@ cleanedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Clean
 # code: 2001-01-02 to 2019-11-20
 
 # heroin_ems: 2015-07-22 to 2019-11-19
+
+######################################################################################
+##################################
+# Code from markdown.
+##################################
+######################################################################################
+
+fishnet <- 
+  st_make_grid(cincinnati, cellsize = 500) %>%
+  st_sf()
+
+fishnet <- 
+  fishnet[cincinnati,] %>%
+  mutate(uniqueID = rownames(.)) %>%
+  dplyr::select(uniqueID)
+
+ggplot() +
+  geom_sf(data=cincinnati, fill=NA, colour="black") +
+  geom_sf(data=fishnet, fill=NA, colour="black") +
+  labs(title = "Cincinnati and the fishnet") +
+  mapTheme()
+
+crime_net <- 
+  narcotics %>% 
+  dplyr::select() %>% 
+  mutate(countNarcotics = 1) %>% 
+  aggregate(., fishnet, sum) %>%
+  mutate(countNarcotics = ifelse(is.na(countNarcotics), 0, countNarcotics),
+         uniqueID = rownames(.),
+         cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
+
 
 ######################################################################################
 #############
