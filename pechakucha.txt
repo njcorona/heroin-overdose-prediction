@@ -1,5 +1,6 @@
 - should have:
 	- well thought out exploratory analysis
+		- 
 	- good sense for the purpose of the predictions in the context of the use case
 	- what is the use case?
 	- who is the user?
@@ -21,3 +22,26 @@
 	- think critically about how you might offer these predictions to a public health official in your app
 	- what do they want to know?
 	- keep in mind your predictions will be about overdoses but may also simply be places where people are using heroin
+
+Notes
+- https://www.cincinnati-oh.gov/health/news/public-health-alert-overdose-activity/
+	- Naloxone is sold over-the-counter in pharmacies throughout the area.
+- https://www.hamiltoncountyhealth.org/harm-reduction/narcan/
+	- Hamilton County Public Health, through the NARCAN® Distribution Collaborative (NDC), is making NARCAN® (Naloxone) available to the public at NO CHARGE. 
+- https://www.naccho.org/uploads/downloadable-resources/49-51-Hamilton-County-Narcan-Distribution-Collaborative.pdf
+- https://www.cincinnati-oh.gov/health/cincinnati-health-department-primary-health-care/safe-places/
+	- Data currently shared between City of Cincinnati Fire, Police, and Health:
+		- Heroin/drug activity past 24 hour report;
+		- Hepatitis B and C trends as well as efforts to bolster Hepatitis A immunizations;
+		- Narcan administered by Fire EMS;
+		- 911 dispatched calls;
+		- Emergency Department admissions due to overdose;
+		- Syringe exchange statistics (e.g., number of clients, visits, syringes);
+		- Quick Response Team (QRT) updates.
+		- Daily Hamilton County Coroner report.
+- https://rstudio-pubs-static.s3.amazonaws.com/471672_91005ef0a8a64e88be3c33ab8e04989d.html
+
+READ THIS
+- https://ldi.upenn.edu/brief/expanding-access-naloxone-review-distribution-strategies
+- https://www.govtech.com/data/How-Local-Data-Helps-Stunt-Drug-Overdoses.html
+- https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1002956
