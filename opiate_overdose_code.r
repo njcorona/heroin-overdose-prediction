@@ -8,6 +8,10 @@
 
 library(here)
 library(tidyverse)
+library(maps)
+library(tools)
+library(rnaturalearth)
+library(rnaturalearthdata)
 library(sf)
 library(QuantPsyc)
 library(RSocrata)
@@ -226,7 +230,8 @@ hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
 # Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
 vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings ordered vacant by the city because unsafe, need to be demolished, etc (source: http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
 
-ohio_counties <- st_read("tl_2016_39_cousub.shp") # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
+ohio_counties <- st_read("tl_2016_39_cousub.shp") %>% st_transform(3735) # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
+ohio_boundary <- st_union(ohio_counties)
 
 hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
   st_transform(3735)
@@ -332,16 +337,16 @@ heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
 
 # Need to fix legend, but this map feels nifty at making the case for more strategic 
 # resource deployment:
-ggplot() +
-  geom_sf(data = hamilton) +
-  geom_sf(data = cincinnati) +
-  geom_sf(data = heroin_ems17[1:1000,],
-          aes(colour = "Heroin overdose")) +
-  geom_sf(data = nalox_sites,
-          aes(colour = "Naloxone distribution site")) +
-  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
-       subtitle = "Cincinnati, OH") +
-  mapTheme()
+# ggplot() +
+#   geom_sf(data = hamilton) +
+#   geom_sf(data = cincinnati) +
+#   geom_sf(data = heroin_ems17[1:1000,],
+#           aes(colour = "Heroin overdose")) +
+#   geom_sf(data = nalox_sites,
+#           aes(colour = "Naloxone distribution site")) +
+#   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+#        subtitle = "Cincinnati, OH") +
+#   mapTheme()
 
 # (2) drugs_cops
 drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
@@ -453,6 +458,40 @@ crime_net <-
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
 
+######################################################################################
+##################################
+# Maps for exploratory analysis slides in the powerpoint 
+##################################
+######################################################################################
+
+# Geographic context: Where is Cincinnati? 
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE)) # state boundaries
+world <- ne_countries(scale = "medium", returnclass = "sf") # countries/states
+states <- cbind(states, st_coordinates(st_centroid(states))) # state names
+states$ID <- toTitleCase(states$ID) # convert state names to proper nouns
+
+ggplot() +
+  geom_sf(data = states, fill = NA) + 
+  geom_text(data = states, aes(X, Y, label = ID), size = 4) +
+  geom_sf(data = cincinnati, aes(fill = BND_NAME), alpha=0.3, color="#25CB10") +
+  scale_fill_manual(values = c("#25CB10")) +
+  coord_sf(xlim = c(-92, -79), ylim = c(36.15, 43.5), expand = FALSE) +
+  labs(title = "Cincinnati, OH", subtitle = "In the Midwest context") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+# Need to fix legend, but this map feels nifty at making the case for more strategic
+# resource deployment:
+ggplot() +
+  geom_sf(data = hamilton) +
+  geom_sf(data = cincinnati) +
+  geom_sf(data = heroin_ems[1:1000,],
+          aes(colour = "Heroin overdose")) +
+  geom_sf(data = nalox_sites,
+          aes(colour = "Naloxone distribution site")) +
+  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+       subtitle = "Cincinnati, OH") +
+  mapTheme()
 
 ######################################################################################
 #############
