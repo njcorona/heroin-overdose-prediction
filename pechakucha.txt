@@ -45,3 +45,6 @@ READ THIS
 - https://ldi.upenn.edu/brief/expanding-access-naloxone-review-distribution-strategies
 - https://www.govtech.com/data/How-Local-Data-Helps-Stunt-Drug-Overdoses.html
 - https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1002956
+- is there a crime categorization for _selling_ drugs?
+
+capitalize on the success that non-medical peers have been having in bringing down overdose deaths because it seems like ems and first responders have taken advantage of open data and more data sharing to better allocate their ems resources already.
