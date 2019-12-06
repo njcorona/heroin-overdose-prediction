@@ -46,5 +46,7 @@ READ THIS
 - https://www.govtech.com/data/How-Local-Data-Helps-Stunt-Drug-Overdoses.html
 - https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1002956
 - is there a crime categorization for _selling_ drugs?
+- https://efficientgov.com/blog/2017/04/19/government-data-predict-opioid-overdose/
+- https://www.cincinnati.com/story/news/2016/09/02/cincinnati-shifts-tactics-response-ods/89761806/
 
 capitalize on the success that non-medical peers have been having in bringing down overdose deaths because it seems like ems and first responders have taken advantage of open data and more data sharing to better allocate their ems resources already.
