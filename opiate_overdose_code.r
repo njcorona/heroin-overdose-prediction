@@ -480,15 +480,45 @@ ggplot() +
   theme(legend.position = "none") +
   mapTheme()
 
-# Need to fix legend, but this map feels nifty at making the case for more strategic
-# resource deployment:
+# Cincinnati close-up
 ggplot() +
-  geom_sf(data = hamilton) +
-  geom_sf(data = cincinnati) +
-  geom_sf(data = heroin_ems[1:1000,],
-          aes(colour = "Heroin overdose")) +
-  geom_sf(data = nalox_sites,
-          aes(colour = "Naloxone distribution site")) +
+  geom_sf(data = hamilton, fill = NA, color = "gray") +
+  geom_sf(data = cincinnati, fill = "darkgray", color = "gray") +
+  geom_sf(data = hamilton_streets, color = "gray") +
+  geom_sf(data = heroin_ems17[1:1000,], size = 1, color = "#25CB10") +
+  labs(title="Cincinnati and Hamilton County, OH") +
+  mapTheme()
+
+# EMS calls related to heroin overdose in Cincinnati, over time:
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems15, size = 1, color = "#8FA108") +
+  labs(title="Heroin overdose events 2015", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  labs(title="Heroin overdose events 2017", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems19, size = 1, color = "#5AB60C") +
+  labs(title="Heroin overdose events 2019", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+# Heroin overdose vs. Naloxone distribution sites in Hamilton County:
+ggplot() +
+  geom_sf(data = hamilton, fill = NA, color = "gray") +
+  geom_sf(data = hamilton_streets, color = "gray") +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  geom_sf(data = nalox_sites, size = 3, color = "#FA7800") +
+  scale_color_manual(labels = c("Heroin overdose", "Naloxone distribution site")) +
   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
        subtitle = "Cincinnati, OH") +
   mapTheme()
