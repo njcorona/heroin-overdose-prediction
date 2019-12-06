@@ -523,6 +523,62 @@ ggplot() +
        subtitle = "Cincinnati, OH") +
   mapTheme()
 
+# Covariates
+censusRace_props <- censusRace %>% dplyr::filter(variable == "prop_white" | 
+                                                   variable == "prop_black")
+censusRace_props <- censusRace_props[cincinnati,]
+
+censusRace_props %>% ggplot(aes(fill = value)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+acsData_props <- acsData %>% dplyr::filter(variable == "prop_poverty" |
+                                             variable == "prop_bach_or_higher")
+acsData_props <- acsData_props[cincinnati, ]
+acsData_props %>% ggplot(aes(fill = estimate)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+acsYoungMen <- acsData %>%
+  spread(key = variable, value = estimate) 
+acsYoungMen <- acsYoungMen %>% mutate(
+  males_18to24 = males_18_19+males_20+males_21+males_22_24) %>%
+  gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
+  dplyr::select(GEOID, NAME, variable, estimate, geometry) %>%
+  dplyr::filter(variable == "males_18to24")
+acsYoungMen <- acsYoungMen[cincinnati, ]
+acsYoungMen %>% ggplot(aes(fill = estimate)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+acsMedHome <- acsData %>% dplyr::filter(variable == "median_home_value")
+acsMedHome <- acsMedHome[cincinnati, ]
+acsMedHome %>% ggplot(aes(fill = estimate)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = abandoned_vehicles, size = 1, color = "#404788FF") +
+  labs(title="Abandoned vehicles", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = complainedTrash, size = 1, color = "#29AF7FFF") +
+  labs(title="Trash complaints", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
 ######################################################################################
 #############
 #############
