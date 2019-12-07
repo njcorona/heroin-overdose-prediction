@@ -133,7 +133,7 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 #   dplyr::select(GEOID, NAME, variable, value, geometry)
 # st_write(censusRace, "censusRace.shp")
 
-# # Other place-related variables from the 2015 American Community Survey
+# Other place-related variables from the 2015 American Community Survey
 # v15 <- load_variables(2015, "acs5", cache = TRUE)
 # write_csv(v15,"acs_vars_2015.csv")
 # acsvars <- c(total_pop = "B01003_001",
@@ -164,27 +164,30 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 #                bachelors_or_higher = "B23006_023",
 #                unemployed_over_16yrs = "B23025_007"
 #                )
-# acsData <- get_acs(geography = "tract", 
-#                    variables = acsvars, 
-#                    state = 39, 
-#                    county = 061, 
+# acsData <- get_acs(geography = "tract",
+#                    variables = acsvars,
+#                    state = 39,
+#                    county = 061,
 #                    geometry = TRUE) %>% st_transform(3735)
 # acsData <- acsData %>%
 #   dplyr::select(-moe) %>%
 #   spread(key = variable, value = estimate) %>%
 #   mutate(log_pop = log(total_pop),
-#          prop_males = round(total_males/total_pop,4), 
-#          prop_males_18to24 = round(sum(males_18_19,males_20,males_21,males_22_24)/total_males,4),
-#          prop_males_25to34 = round(sum(males_25_29,males_30_34)/total_males,4),
-#          prop_males_35to49 = round(sum(males_35_39,males_40_44,males_45_49)/total_males,4),
-#          prop_males_50to64 = round(sum(males_50_54,males_55_59,males_60_61,males_62_64)/total_males,4),
-#          prop_males_65up = round(sum(males_65_66,males_67_69,males_70_74,males_75_79,males_85plus)/total_males,4),
+#          prop_males = round(total_males/total_pop,4),
+#          prop_males_18to24 = round((males_18_19+males_20+males_21+males_22_24)/total_males,4),
+#          prop_males_25to34 = round((males_25_29+males_30_34)/total_males,4),
+#          prop_males_35to49 = round((males_35_39+males_40_44+males_45_49)/total_males,4),
+#          prop_males_50to64 = round((males_50_54+males_55_59+males_60_61+males_62_64)/total_males,4),
+#          prop_males_65up = round((males_65_66+males_67_69+males_70_74+males_75_79+males_85plus)/total_males,4),
 #          prop_poverty = round(total_blw_poverty_lvl/total_pop,4),
 #          prop_bach_or_higher = round(bachelors_or_higher/total_pop,4),
 #          prop_unempl = round(unemployed_over_16yrs/total_pop,4)) %>%
 #   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
 #   dplyr::select(GEOID, NAME, variable, estimate, geometry)
-# st_write(acsData, "acsData.shp")
+# acsDataTEMP <- acsData %>% filter(stringr::str_detect(variable, 'prop')) # checking to make sure my 'proportion' variables aren't out of whack
+# min(acsDataTEMP$estimate) # should be between 0 and 1
+# max(acsDataTEMP$estimate) # should be between 0 and 1
+# st_write(acsData, "acsData.shp", update = T)
 
 ######################################################################################
 ################################
@@ -227,13 +230,21 @@ nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
 hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
   st_transform(3735) 
 
-# Not sure how to geocode this -- the x-coordinate/y-coordinate variables are not lat/long
-vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) # buildings ordered vacant by the city because unsafe, need to be demolished, etc (source: http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
+# Buildings ordered vacant by the city because unsafe/condemned/etc (source: City of Cincinnati http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
+#vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) 
+vacant_buildings <- st_read("vacantbldgs.shp") %>% st_transform(3735) # updating with shapefile created in ArcMap
 
+# Ohio counties, state boundary, and Hamilton County only
 ohio_counties <- st_read("tl_2016_39_cousub.shp") %>% st_transform(3735) # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
 ohio_boundary <- st_union(ohio_counties)
 
 hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
+  st_transform(3735)
+
+# Special business licenses (promising? still looking for fast food restaurants)
+biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
+  filter(!is.na(LATITUDE)) %>%
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
 ######################################################################################
@@ -278,6 +289,13 @@ ggplot() +
 ggplot() +
   geom_sf(data = hamilton) +
   geom_sf(data = cincinnati) +
+  mapTheme()
+
+# Vacant and condemned buildings
+ggplot() +
+  geom_sf(data = cincinnati) +
+  geom_sf(data = sna) +
+  geom_sf(data = vacant_buildings) +
   mapTheme()
 
 ######################################################################################
@@ -327,26 +345,6 @@ heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
 heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
 heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
 heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
-
-# ggplot() + 
-#   geom_sf(data = cincinnati) + 
-#   geom_sf(data = heroin_ems[1:1000,]) +
-#   labs(title="Heroin-related incidents",
-#        subtitle = "Cincinnati, OH") +
-#   mapTheme()
-
-# Need to fix legend, but this map feels nifty at making the case for more strategic 
-# resource deployment:
-# ggplot() +
-#   geom_sf(data = hamilton) +
-#   geom_sf(data = cincinnati) +
-#   geom_sf(data = heroin_ems17[1:1000,],
-#           aes(colour = "Heroin overdose")) +
-#   geom_sf(data = nalox_sites,
-#           aes(colour = "Naloxone distribution site")) +
-#   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
-#        subtitle = "Cincinnati, OH") +
-#   mapTheme()
 
 # (2) drugs_cops
 drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
@@ -581,10 +579,8 @@ ggplot() +
 
 ######################################################################################
 #############
-#############
 # Note: Most of this code is what I submitted for the risk analysis for crimes.  
 # I'll leave it in so I can adapt for this homework.
-#############
 #############
 ######################################################################################
 
