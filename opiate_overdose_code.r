@@ -532,6 +532,29 @@ c311 <- c311[!is.na(c311$latitude), ] %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+unique(c311$service_name)
+graffiti <- c311 %>% filter(grepl("Graffiti", service_name) == TRUE) %>% 
+  filter(requested_date >= as.Date("2015-01-01"))
+blight_311 <- c311 %>% filter(grepl("Unsanitary", service_name) == TRUE |  
+                                          grepl("Waste", service_name) == TRUE |
+                                          grepl("waste", service_name) == TRUE | 
+                                          grepl("Trash", service_name) == TRUE | 
+                                          grepl("trash", service_name) == TRUE | 
+                                          grepl("Dumping", service_name) == TRUE | 
+                                          grepl("dumping", service_name) == TRUE | 
+                                          grepl("Sewage", service_name) == TRUE | 
+                                          grepl("sewage", service_name) == TRUE |
+                                          grepl("Litter", service_name) == TRUE |
+                                          grepl("litter", service_name) == TRUE |
+                                          grepl("Mold", service_name) == TRUE | 
+                                          grepl("Roaches", service_name) == TRUE | 
+                                          grepl("Mice", service_name) == TRUE |
+                                          grepl("Rats", service_name) == TRUE | 
+                                          grepl("Rodents", service_name) == TRUE |
+                                          grepl("Fleas", service_name) == TRUE | 
+                                          grepl("Bed Bugs", service_name) == TRUE) %>%
+  filter(requested_date >= as.Date("2015-01-01"))
+
 # # Broad category.
 # unique(sapply(str_split(c311$service_name, ","), function(x) {x[[1]]})) # Do not delete this.
 # 
@@ -590,6 +613,12 @@ unionTerminal <- as.data.frame(cbind(lat, long))
 unionTerminal <- unionTerminal %>% st_as_sf(coords = c("long", "lat"), crs = 4326, 
                                             agr = "constant") %>%
   st_transform(3735)
+
+# (10) Crime 
+# Drug sale/purchase
+crime_assault <- crimes %>% filter(grepl("ASSAULT", offense) == TRUE)
+crime_murder <- crimes %>% filter(grepl("MURDER", offense) == TRUE | 
+                                    grepl("HOMICIDE", offense) == TRUE)
 
 ######################################################################################
 ##################################

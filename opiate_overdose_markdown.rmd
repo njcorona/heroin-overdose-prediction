@@ -271,6 +271,90 @@ weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, Ho
 # Manually generated using sources of information about fast food chains present in OH (see data source list) and KML file built in Google Maps
 ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
   st_transform(3735)
+
+######################################################################################
+#########################################
+# Basic cleaning and data manipulation. #
+#########################################
+######################################################################################
+
+# drugs_cops
+drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+# heroin_cops
+heroin_cops <- heroin_cops[!is.na(heroin_cops$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+# crimes
+crimes <- crimes[!is.na(crimes$latitude_x), ] %>%
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+# c311
+c311 <- c311[!is.na(c311$latitude), ] %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+graffiti <- c311 %>% filter(grepl("Graffiti", service_name) == TRUE) %>% 
+  filter(requested_date >= as.Date("2015-01-01"))
+blight_311 <- c311 %>% filter(grepl("Unsanitary", service_name) == TRUE |  
+                                          grepl("Waste", service_name) == TRUE |
+                                          grepl("waste", service_name) == TRUE | 
+                                          grepl("Trash", service_name) == TRUE | 
+                                          grepl("trash", service_name) == TRUE | 
+                                          grepl("Dumping", service_name) == TRUE | 
+                                          grepl("dumping", service_name) == TRUE | 
+                                          grepl("Sewage", service_name) == TRUE | 
+                                          grepl("sewage", service_name) == TRUE |
+                                          grepl("Litter", service_name) == TRUE |
+                                          grepl("litter", service_name) == TRUE |
+                                          grepl("Mold", service_name) == TRUE | 
+                                          grepl("Roaches", service_name) == TRUE | 
+                                          grepl("Mice", service_name) == TRUE |
+                                          grepl("Rats", service_name) == TRUE | 
+                                          grepl("Rodents", service_name) == TRUE |
+                                          grepl("Fleas", service_name) == TRUE | 
+                                          grepl("Bed Bugs", service_name) == TRUE) %>%
+  filter(requested_date >= as.Date("2015-01-01"))
+
+# code
+code <- code %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+abandoned_vehicles <- code %>% dplyr::filter(comp_type_desc == "Abandoned Vehicle Code Enforcement")
+complainedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Complaint")
+
+# Firearms and weapons dealers
+firearms <- biz_licenses %>% filter(LICENSE == "DANGEROUS WEAPONS" | 
+                                    LICENSE == "RETAIL DEALER IN FIREARMS AND AMMUNITION")
+# unique(firearms$LICENSE)
+
+# Cabaret, pool halls and other 'special business licenses'
+funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" | 
+                                      LICENSE == "MASSAGE PRACTITIONER" |
+                                      LICENSE == "GAME ARCADE" |
+                                      LICENSE == "CABARET" |
+                                      LICENSE == "DANCE HALL" |
+                                      LICENSE == "SEXUALLY ORIENTED BUSINESS" |
+                                      LICENSE == "MASSAGE ESTABLISHMENT")
+
+# Point location of Union Terminal, main train station in south Cincinnati
+lat <- c(-84.53228)
+long <- c(39.108841)
+unionTerminal <- as.data.frame(cbind(lat, long))
+unionTerminal <- unionTerminal %>% st_as_sf(coords = c("long", "lat"), crs = 4326, 
+                                            agr = "constant") %>%
+  st_transform(3735)
+
+# Crime 
+# Assault
+crime_assault <- crimes %>% filter(grepl("ASSAULT", offense) == TRUE)
+# Murder
+crime_murder <- crimes %>% filter(grepl("MURDER", offense) == TRUE | 
+                                    grepl("HOMICIDE", offense) == TRUE)
 ```
 
 # Introduction
@@ -327,14 +411,14 @@ Data for this analysis were gathered from the following sources. Information spa
   - **[Open Data Cincinnati](https://data.cincinnati-oh.gov/)**
       - Emergency Medical Services calls
       - 311 non-emergency service requests 
-      - Crime (2015-2019)
+      - Crime
       - Vacant, abandoned and condemned buildings
       - Abandoned vehicles (via zoning code violations data)
       - Land use/zoning
       - Neighborhoods (modified to fit US 2010 census tracts)
       - Locations of fire stations, EMS, police stations, hospitals, pharmacies
       - Locations of firearms and weapons dealers
-      - Locations of pool halls, 
+      - Locations of pool halls, dance halls, massage parlors & sundry "special business license" locations
       - Female-owned small businesses
   - **[Take Charge Ohio](https://takechargeohio.org/map)**
       - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
@@ -360,7 +444,7 @@ Our exploration of Cincinnati data sought to identify factors that co-occur with
 
 This analysis focuses on heroin overdoses specifically. Literature from the Hamilton County Department of Public Health, Ohio Department of Health, National Institute on Drug Abuse and Centers for Disease Control report that the number of heroin overdose deaths in Ohio increased sharply between 2010 and 2016, specifically reporting a statistically significant one-year increase in Ohio from 2016 to 2017[^15], and have been in decline since that time[^16]. (Drug overdose deaths caused by the synthetic opioid Fentanyl have caused an increase in _all_ opioid overdose deaths during this same time period, but an analysis of Fentanyl is outside the scope of this project)[^17]. 
 
-Data from Cincinnati mirror this statewide trend. The following maps display the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019, as measured by EMS calls either caused explicitly in response to heroin overdoses or that led to the administration of naloxone (also called Narcan, an overdose-reversal drug).
+Data from Cincinnati mirror this statewide trend. The following maps display the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019, as measured by EMS calls either caused explicitly in response to heroin overdoses or that led to the administration of naloxone (also called Narcan, an overdose-reversal drug). 
 
 ```{r exploratory}
 # Outcome of interest: heroin overdose 
@@ -438,39 +522,75 @@ ggplot() +
   mapTheme()
 ```
 
-### Continuous Features 
+### Features associated with heroin overdose 
 
-Features that are predictive of whether or not individuals will engage in heroin misuse
+The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, and crime prevalence are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati specifically.
 
-```{r continuous}
-
+```{r risk_small_multiples}
+# - Vacant, abandoned and condemned buildings
+# - 311 non-emergency service requests 
+# - Crime (2015-2019)
+# - Abandoned vehicles (via zoning code violations data)
+# - Land use/zoning
+# - Neighborhoods (modified to fit US 2010 census tracts)
+# - Locations of fire stations, EMS, police stations, hospitals, pharmacies
+# - Locations of firearms and weapons dealers
+# - Locations of pool halls, 
+# - Female-owned small businesses
+# - census
+# - ACS
+# - temperature
+# - precipitation
+# - fast food
+# 
+# ggplot() +
+#   geom_sf(data=cincinnati) +
+#   geom_sf(data = rbind(abandoned_vehicles %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Abandoned Cars"),
+#                        funTimes %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Special Business License"), 
+#                        firearms %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Firearms Vendors"),
+#                        vacant_buildings %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Vacant, Condemned Bldgs"), 
+#                        nalox_sites %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Nalox Sites")),
+#           size = .1) +
+#   facet_wrap(~Legend, ncol = 2) +
+#   labs(title = "Risk Factors") +  
+#   mapTheme()
+# 
+# ggplot() +
+#   geom_sf(data=cincinnati) +
+#   geom_sf(data = rbind(affHousing,abandonBuildings,sanitation,industrial_zones,overdose,
+#                        homicide,farmMarket)) +
+#         #  size = .1) +
+#   facet_wrap(~Legend, ncol = 3) +
+#   labs(title = "Spatial Distributuion of Risk Factors") +
+#   mapTheme() +
+#   theme(strip.text = element_text(size = 5))
 ```
 
-### Logical Features 
+The maps suggest that only some factors will be useful in predicting heroin overdose risk in Cincinnati, namely, X, Y, and Z, as they demonstrate spatial clustering similar to (or the inverse of) Cincinnati's historic heroin overdose sites. 
 
-Now we turn to logical predictive features - features whose values are either true, false, or unknown
+The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about abandoned trash and from parking violation data that suggest a car has been abandoned, as well as the locations of firearms dealers. Although abandoned vehicles can serve as drug use sites, they appear to be too prevalent to be of use here, while firearms and weapons retail are too sparse.
 
-```{r logical}
+These conclusions can be verified by examining the correlation between these features (and different methods of engineering a feature) and the outcome of interest, as below. Firearms dealers are omitted because there are so few data.
 
-```
-
-### Categorical Features 
-
-```{r categorical}
-
-```
-
-### Predictive Features 
-
-In summary, I identify the following promising predictive features:
-
-# Exploratory analysis 
-
-```{r exploratory}
+```{r correlations}
 
 ```
 
 # Spatial/time process 
+
+As can be seen, the temporal process is similar to a negative quadratic function (a parabola that opens downard), while the spatial process displays clustering, most heavily in an arc on the southern side of the city, straddling train tracks and a waterway in south-central Cincinnati. 
+
+To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at hyperlocal geographies. 
 
 ```{r spacetime}
 
