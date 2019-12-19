@@ -770,13 +770,56 @@ do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest Neighbor risk Factors by
 final_net <-
   left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
 
+
+# A digression into zoning.
+# SF-20: Single Family - 20,000 SF lots
+# SF-6: Single Family - 6,000 SF lots
+# SF-4: Single Family - 4,000 SF lots
+# SF-2: Single Family - 2,000 SF lots
+# RMX: Residential Mixed - 1 to 3 units
+# RM-2.0: Residential Multi-family - 2,000 SF of land per unit
+# RM-1.2: Residential Multi-family - 1,200 SF of land per unit
+# RM-0.7: Residential Multi-family - 700 SF of land per unit
+# OL: Office Limited
+# CN-P: Commercial Neighborhood - Pedestrian
+# CN-M: Commercial Neighborhood - Mixed
+# CC-P: Commercial Community - Pedestrian
+# CC-M: Commercial Community - Mixed
+# CC-A: Commercial Community - Auto-oriented
+# CG-A: Commercial General - Auto-oriented
+# ML: Manufacturing Limited
+# MG: Manufacturing General
+# PD: Planned Development
+
+zoning <- zoning %>% mutate(zone_type =
+                              if_else(grepl("SF-", ZONE_TYPE) == TRUE, "Single_Family",
+                                      if_else(grepl("RM", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
+                                              if_else(grepl("RF", ZONE_TYPE) == TRUE, "Riverfront",
+                                                      if_else(grepl("RM-0.7", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
+                                                              if_else(grepl("OL", ZONE_TYPE) == TRUE, "Office",
+                                                                      if_else(grepl("OG", ZONE_TYPE) == TRUE, "Office",
+                                                                              if_else(grepl("C", ZONE_TYPE) == TRUE, "Commercial",
+                                                                                      if_else(grepl("ML", ZONE_TYPE) == TRUE, "Manufacturing",
+                                                                                              if_else(grepl("MA", ZONE_TYPE) == TRUE, "Manufacturing",
+                                                                                                      if_else(grepl("MG", ZONE_TYPE) == TRUE, "Manufacturing",
+                                                                                                              if_else(grepl("ME", ZONE_TYPE) == TRUE, "Manufacturing",
+                                                                                                                      if_else(grepl("PD", ZONE_TYPE) == TRUE, "Planned_Development",
+                                                                                                                              if_else(grepl("PR", ZONE_TYPE) == TRUE, "Park_Or_Recreational",
+                                                                                                                                      if_else(grepl("UM", ZONE_TYPE) == TRUE, "Urban",
+                                                                                                                                              if_else(grepl("DD", ZONE_TYPE) == TRUE, "Downtown_District",
+                                                                                                                                                      if_else(grepl("IR", ZONE_TYPE) == TRUE, "Institutional_Residential",
+                                                                                                                                                              if_else(grepl("T4", ZONE_TYPE) == TRUE, "Urban",
+                                                                                                                                                                      if_else(grepl("T5", ZONE_TYPE) == TRUE, "Urban",
+                                                                                                                                                                              if_else(grepl("T3", ZONE_TYPE) == TRUE, "Suburban",
+                                                                                                                                                                                      NA_character_))))))))))))))))))))
+
 # Adding overlapping IDs, like neighborhood or zoning.
 # Testing with neighborhood, zoning, and census tract data.
 final_net <-
   st_centroid(final_net) %>%
   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
   st_join(., dplyr::select(sna, SNA_NAME)) %>%
-  st_join(., dplyr::select(zoning, ZONE_TYPE)) %>%
+  st_join(., dplyr::select(zoning, zone_type)) %>%
   st_set_geometry(NULL) %>%
   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
   st_sf() %>%
@@ -785,7 +828,7 @@ final_net <-
 # For some reason, final_net has lots of duplicated values.
 final_net <- final_net[!duplicated(final_net),] 
 
-dplyr::select(final_net, SNA_NAME, ZONE_TYPE) %>%
+dplyr::select(final_net, SNA_NAME, zone_type) %>%
   gather(Variable, Value, -geometry) %>%
   ggplot() +
   geom_sf(aes(fill = Value)) +
