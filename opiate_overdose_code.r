@@ -255,6 +255,10 @@ biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
 weather <- read_csv("weather.csv")
 weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, HourlyPrecipitation, SOURCE, REPORT_TYPE)
 
+# Fast food chain locations
+ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
+  st_transform(3735)
+
 ######################################################################################
 ############################################
 # Basic boundary and point visualizations. #

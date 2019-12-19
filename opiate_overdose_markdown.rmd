@@ -56,11 +56,15 @@ Data for this analysis were gathered from the following sources. Information spa
       - Racial/ethnic composition of census tracts (2010) 
   - [United States American Community Survey](https://www.census.gov/programs-surveys/acs)
       - Sample-based estimates of census-tract-level age, sex, education level, income, employment, poverty and home value data (2015)
+  - [Longitudinal Tract Database]((https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm)
+      - Public-use dataset re-estimating census data from the year 2000 within 2010 tract boundaries to enable analysis of change by tract
   - [USGS](https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based)
       - Ohio state, county, city and street lines and boundaries (2019)
-  - [National Weather Service]
+  - [National Weather Service](https://www.weather.gov/)
       - Temperature 
       - Precipitation 
+  - [Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)
+      - Fast food chain restaurant locations (After Li et al. (2019)[^13] suggested that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
 
 ```{r summary_stats}
 
