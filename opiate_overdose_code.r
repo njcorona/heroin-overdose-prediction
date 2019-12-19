@@ -7,6 +7,7 @@
 # Load packages, data, colors etc ---------------------------------
 
 library(here)
+library(raster)
 library(tidyverse)
 library(dplyr)
 library(janitor)
@@ -837,6 +838,264 @@ dplyr::select(final_net, SNA_NAME, zone_type) %>%
   labs(title = "Aggregate Areas") +
   mapTheme() + theme(legend.position = "none")
 
+# Moran's I stuff.
+
+final_net.nb <- poly2nb(final_net, queen=TRUE)
+final_net.weights <- nb2listw(final_net.nb, style="W", zero.policy=TRUE)
+
+final_net.localMorans <- 
+  cbind(
+    as.data.frame(localmoran(final_net$countHeroinResponses, final_net.weights)),
+    as.data.frame(final_net, NULL)) %>% 
+  st_sf() %>%
+  dplyr::select(HeroinResponse_Count = countHeroinResponses, 
+                Local_Morans_I = Ii, 
+                P_Value = `Pr(z > 0)`) %>%
+  mutate(Significant_Hotspots = ifelse(P_Value <= 0.05, 1, 0)) %>%
+  gather(Variable, Value, -geometry)
+
+vars <- unique(final_net.localMorans$Variable)
+varList <- list()
+
+for(i in vars){
+  varList[[i]] <- 
+    ggplot() +
+    geom_sf(data = filter(final_net.localMorans, Variable == i), aes(fill = Value), colour=NA) +
+    scale_fill_viridis(name="") +
+    labs(title=i) +
+    mapTheme()}
+
+# This needs space to generate correctly - make sure to expand the Plots window when running.
+do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Heroin Responses"))
+
+# Distance to significant heroin hotspots
+final_net <-
+  final_net %>% 
+  mutate(heroin.isSig = ifelse(localmoran(final_net$countHeroinResponses, 
+                                            final_net.weights)[,5] <= 0.0000001, 1, 0)) %>%
+  mutate(heroin.isSig.dist = nn_function(st_coordinates(st_centroid(final_net)),
+                                           st_coordinates(st_centroid(
+                                             filter(final_net, heroin.isSig == 1))), 1 ))
+
+ggplot() + 
+  geom_sf(data = final_net, aes(fill = heroin.isSig.dist)) +
+  scale_fill_viridis() +
+  labs(title = "Distance to highly significant heroin response hotspots") +
+  mapTheme()
+
+# The next step is to build some faceted correlation plots.  The relevant code is under 
+# "Both features for a given risk factor cannot be included in the model because of co-linearity. This plot and the correlation coefficients help us understand which type of feature for a given risk factor should be included."
+# in the burglary markdown Ken gave us.  I'll omit it here.
+
+ggplot(final_net, aes(countHeroinResponses)) + 
+  geom_histogram(binwidth = 1) +
+  labs(title = "Distribution of heroin response by grid cell")
+
+# Ken's markdown also includes an additional set of regression variables called reg.ss.vars.
+# He includes them so that he can compare the two models - we presumably will have chosen
+# a model that we prefer, so I'll omit that one.  There is no need to run a time-consuming
+# cross-validation on two models.
+reg.vars <- c("abandoned_vehicles.nn", "vacant_buildings.nn", "funTimes.nn", "SNA_NAME", "zone_type")
+
+crossValidate <- function(dataset, id, dependentVariable, indVariables) {
+  
+  allPredictions <- data.frame()
+  cvID_list <- unique(dataset[[id]])
+  
+  for (i in cvID_list) {
+    
+    thisFold <- i
+    cat("This hold out fold is", thisFold, "\n")
+    
+    fold.train <- filter(dataset, dataset[[id]] != thisFold) %>% as.data.frame() %>% 
+      dplyr::select(id, geometry, indVariables, dependentVariable)
+    fold.test  <- filter(dataset, dataset[[id]] == thisFold) %>% as.data.frame() %>% 
+      dplyr::select(id, geometry, indVariables, dependentVariable)
+    
+    regression <-
+      glm(countHeroinResponses ~ ., family = "poisson", 
+          data = fold.train %>% 
+            dplyr::select(-geometry, -id))
+    
+    thisPrediction <- 
+      mutate(fold.test, Prediction = predict(regression, fold.test, type = "response"))
+    
+    allPredictions <-
+      rbind(allPredictions, thisPrediction)
+    
+  }
+  return(st_sf(allPredictions))
+}
+
+reg.cv <- crossValidate(
+  dataset = final_net,
+  id = "cvID",
+  dependentVariable = "countHeroinResponses",
+  indVariables = reg.vars) %>%
+  dplyr::select(cvID = cvID, countHeroinResponses, Prediction, geometry)
+
+reg.spatialCV <- crossValidate(
+  dataset = final_net,
+  id = "SNA_NAME",
+  dependentVariable = "countHeroinResponses",
+  indVariables = reg.vars) %>%
+  dplyr::select(cvID = SNA_NAME, countHeroinResponses, Prediction, geometry)
+
+reg.summary <- 
+  rbind(
+    mutate(reg.cv,           Error = Prediction - countHeroinResponses,
+           Regression = "Random k-fold CV"),
+    
+    mutate(reg.spatialCV,    Error = Prediction - countHeroinResponses,
+           Regression = "Spatial LOGO-CV")) %>%
+  st_sf() 
+
+grid.arrange(
+  reg.summary %>%
+    ggplot() +
+    geom_sf(aes(fill = Prediction)) +
+    facet_wrap(~Regression) +
+    scale_fill_viridis() +
+    labs(title = "Predicted heroin responses by Regression") +
+    mapTheme() + theme(legend.position="bottom"),
+  
+  filter(reg.summary, Regression == "Random k-fold CV") %>%
+    ggplot() +
+    geom_sf(aes(fill = countHeroinResponses)) +
+    scale_fill_viridis() +
+    labs(title = "Observed heroin responses\n") +
+    mapTheme() + theme(legend.position="bottom"), ncol = 2)
+
+filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
+  ggplot() +
+  geom_sf(aes(fill = Error)) +
+  facet_wrap(~Regression) +
+  scale_fill_viridis() +
+  labs(title = "Heroin response errors by Regression") +
+  mapTheme()
+
+st_set_geometry(reg.summary, NULL) %>%
+  group_by(Regression) %>% 
+  summarize(MAE = round(mean(abs(Prediction - countHeroinResponses), na.rm = T),2),
+            SD_MAE = round(sd(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>% 
+  kable(caption = "MAE by regression") %>%
+  kable_styling("striped", full_width = F) %>%
+  row_spec(1, color = "black", background = "#FDE725FF")
+  row_spec(2, color = "black", background = "#FDE725FF") 
+
+  st_set_geometry(reg.summary, NULL) %>%
+    group_by(Regression) %>%
+    mutate(heroinResponse_Decile = ntile(countHeroinResponses, 10)) %>%
+    group_by(Regression, burglary_Decile) %>%
+    summarize(meanObserved = mean(countHeroinResponses, na.rm=T),
+              meanPrediction = mean(Prediction, na.rm=T)) %>%
+    gather(Variable, Value, -Regression, -heroinResponse_Decile) %>%          
+    ggplot(aes(heroinResponse_Decile, Value, shape = Variable)) +
+    geom_point(size = 2) + geom_path(aes(group = heroinResponse_Decile), colour = "black") +
+    scale_shape_manual(values = c(2, 17)) +
+    facet_wrap(~Regression) + xlim(0,10) +
+    labs(title = "Predicted and observed heroin responses by observed heroin responses decile")
+  
+  # At this point, there's some analysis of the model's accuracy by race of census tract.
+  # I will omit that for the time being, since it requires loading in census data.
+ 
+  final_reg <- 
+    filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
+    mutate(uniqueID = rownames(.))
+  
+  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_KD.1000 <- spatstat::density.ppp(heroin_ppp, 1000)
+  heroin_KD.1500 <- spatstat::density.ppp(heroin_ppp, 1500)
+  heroin_KD.2000 <- spatstat::density.ppp(heroin_ppp, 2000)
+  heroin_KD.df <- rbind(
+    mutate(data.frame(rasterToPoints(mask(raster(heroin_KD.1000), as(sna, 'Spatial')))), Legend = "1000 Ft."),
+    mutate(data.frame(rasterToPoints(mask(raster(heroin_KD.1500), as(sna, 'Spatial')))), Legend = "1500 Ft."),
+    mutate(data.frame(rasterToPoints(mask(raster(heroin_KD.2000), as(sna, 'Spatial')))), Legend = "2000 Ft.")) 
+  
+  heroin_KD.df$Legend <- factor(heroin_KD.df$Legend, levels = c("1000 Ft.", "1500 Ft.", "2000 Ft."))
+  
+  ggplot(data=heroin_KD.df, aes(x=x, y=y)) +
+    geom_raster(aes(fill=layer)) + 
+    facet_wrap(~Legend) +
+    coord_sf(crs=st_crs(final_net)) + 
+    scale_fill_viridis() +
+    mapTheme()
+  
+  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_KD <- spatstat::density.ppp(heroin_ppp, 1000)
+  
+  as.data.frame(heroin_KD) %>%
+    st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
+    aggregate(., final_net, mean) %>%
+    ggplot() +
+    geom_sf(aes(fill=value)) +
+    geom_sf(data = sample_n(heroin_ems18, 1500), size = .5) +
+    scale_fill_viridis() +
+    mapTheme()
+  
+  # Compute kernel density
+  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_KD <- spatstat::density.ppp(heroin_ppp, 1000)
+  # Convert kernel density to grid cells taking the mean
+  heroin_KDE_sf <- as.data.frame(heroin_KD) %>%
+    st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
+    aggregate(., final_net, mean) %>%
+    #Mutate the Risk_Category field as defined below.
+    mutate(label = "Kernel Density",
+           Risk_Category = ntile(value, 100),
+           Risk_Category = case_when(
+             Risk_Category >= 90 ~ "90% to 100%",
+             Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%",
+             Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%",
+             Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%",
+             Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>%
+    #Bind to a layer where test set crime counts are spatially joined to the fisnnet.
+    bind_cols(
+      aggregate(
+        dplyr::select(heroin_ems18) %>% mutate(heroinCount = 1), ., length) %>%
+        mutate(heroinCount = replace_na(heroinCount, 0))) %>%
+    #Select the fields we need
+    dplyr::select(label, Risk_Category, heroinCount)
+  
+  # Repeat for the risk predictions (our model, not kernel density)
+  heroin_risk_sf <-
+    filter(final_reg, Regression == "Spatial LOGO-CV") %>%
+    mutate(label = "Risk Predictions",
+           Risk_Category = ntile(Prediction, 100),
+           Risk_Category = case_when(
+             Risk_Category >= 90 ~ "90% to 100%",
+             Risk_Category >= 70 & Risk_Category <= 89 ~ "70% to 89%",
+             Risk_Category >= 50 & Risk_Category <= 69 ~ "50% to 69%",
+             Risk_Category >= 30 & Risk_Category <= 49 ~ "30% to 49%",
+             Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>%
+    bind_cols(
+      aggregate(
+        dplyr::select(heroin_ems18) %>% mutate(heroinCount = 1), ., length) %>%
+        mutate(heroinCount = replace_na(heroinCount, 0))) %>%
+    dplyr::select(label,Risk_Category, heroinCount)
+  
+  rbind(heroin_KDE_sf, heroin_risk_sf) %>%
+    gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
+    ggplot() +
+    geom_sf(aes(fill = Risk_Category), colour = NA) +
+    geom_sf(data = sample_n(heroin_ems18, 1500), size = .1, colour = "black") +
+    facet_wrap(~label, ) +
+    scale_fill_viridis(discrete = TRUE) +
+    labs(title="Comparison of Kernel Density and Risk Predictions",
+         subtitle="Relative to test set points (in black)") +
+    mapTheme()
+  
+  rbind(heroin_KDE_sf, heroin_risk_sf) %>%
+    st_set_geometry(NULL) %>%
+    gather(Variable, Value, -label, -Risk_Category) %>%
+    group_by(label, Risk_Category) %>%
+    summarize(countHeroinResponses = sum(Value)) %>%
+    ungroup() %>%
+    group_by(label) %>%
+    mutate(Rate_of_test_set_crimes = countHeroinResponses / sum(countHeroinResponses)) %>%
+    ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
+    geom_bar(aes(fill=label), position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = TRUE)
 ######################################################################################
 ##################################
 # Maps for exploratory analysis slides in the powerpoint 
@@ -957,337 +1216,3 @@ ggplot() +
   labs(title="Trash complaints", subtitle = "Cincinnati, OH") +
   theme(legend.position = "none") +
   mapTheme()
-
-######################################################################################
-#############
-# Note: Most of this code is what I submitted for the risk analysis for crimes.  
-# I'll leave it in so I can adapt for this homework.
-#############
-######################################################################################
-
-chicagoBoundary <- 
-  st_read("chicagoBoundary.shp") %>%
-  st_transform(crs=102271) 
-
-fishnet <- 
-  st_make_grid(chicagoBoundary, cellsize = 500) %>%
-  st_sf()
-
-# ggplot() + 
-#   geom_sf(data=chicagoBoundary, fill=NA, colour="black") +
-#   geom_sf(data=fishnet, fill=NA, colour="black") +
-#   labs(title = "Chicago and the fishnet") +
-#   mapTheme()
-
-fishnet <- 
-  fishnet[chicagoBoundary,] %>%
-  mutate(uniqueID = rownames(.)) %>%
-  dplyr::select(uniqueID)
-
-# ggplot() +
-#   geom_sf(data=fishnet) +
-#   labs(title = "Fishnet in Chicago") +
-#   mapTheme()
-
-# burglaries <- 
-#   read.socrata("https://data.cityofchicago.org/Public-Safety/Crimes-2017/d62x-nvdr") %>% 
-#   filter(Primary.Type == "BURGLARY" & 
-#            Description == "FORCIBLE ENTRY") %>%
-#   mutate(x = gsub("[()]", "", Location)) %>%
-#   separate(x,into= c("Y","X"), sep=",") %>%
-#   mutate(X = as.numeric(X),
-#          Y = as.numeric(Y)) %>% 
-#   na.omit %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant")%>%
-#   st_transform(102271) %>% 
-#   distinct()
-
-# saveRDS(burglaries, "burglaries.rds")
-burglaries <- read_rds("burglaries.rds")
-
-# narcotics <-
-#   read.socrata("https://data.cityofchicago.org/Public-Safety/Crimes-2017/d62x-nvdr") %>%
-#   filter(Primary.Type == "NARCOTICS") %>%
-#   mutate(x = gsub("[()]", "", Location)) %>%
-#   separate(x,into= c("Y","X"), sep=",") %>%
-#   mutate(X = as.numeric(X),
-#          Y = as.numeric(Y)) %>%
-#   na.omit %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant")%>%
-#   st_transform(102271) %>%
-#   distinct()
-
-# saveRDS(narcotics, "narcotics.rds")
-narcotics <- read_rds("narcotics.rds")
-
-# This is unresolved - not summing narcotics appropriately.
-crime_net <- 
-  narcotics %>% 
-  dplyr::select() %>% 
-  mutate(countNarcotics = 1) %>% 
-  aggregate(., fishnet, sum) %>%
-  mutate(countNarcotics = ifelse(is.na(countNarcotics), 0, countNarcotics),
-         uniqueID = rownames(.),
-         cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
-
-# ggplot() + # Takes ~ 2 min to generate
-#   geom_sf(data = chicagoBoundary) +
-#   geom_sf(data = burglaries, colour="red", size=0.1, show.legend = "point") +
-#   labs(title= "Burglaries, Chicago - 2017") +
-#   mapTheme()
-
-# abandonCars <- 
-#   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Abandoned-Vehicles/3c9v-pnva") %>%
-#   mutate(year = substr(creation_date,1,4)) %>%
-#   filter(year == "2017") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Abandoned_Cars")
-# 
-# abandonBuildings <- 
-#   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Vacant-and-Abandoned-Building/7nii-7srd") %>%
-#   mutate(year = substr(date_service_request_was_received,1,4)) %>%
-#   filter(year == "2017") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Abandoned_Buildings")
-# 
-# graffiti <- 
-#   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Graffiti-Removal-Historical/hec5-y4x5") %>%
-#   mutate(year = substr(creation_date,1,4)) %>%
-#   filter(year == "2017") %>%
-#   filter(where_is_the_graffiti_located_ == "Front" |
-#            where_is_the_graffiti_located_ == "Rear" | where_is_the_graffiti_located_ == "Side") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Graffiti")
-# 
-# streetLightsOut <- 
-#   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Street-Lights-All-Out/zuxi-7xem") %>%
-#   mutate(year = substr(creation_date,1,4)) %>%
-#   filter(year == "2017") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Street_Lights_Out")
-# 
-# sanitation <-
-#   read.socrata("https://data.cityofchicago.org/Service-Requests/311-Service-Requests-Sanitation-Code-Complaints-Hi/me59-5fac") %>%
-#   mutate(year = substr(creation_date,1,4)) %>%
-#   filter(year == "2017") %>%
-#   dplyr::select(Y = latitude, X = longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Sanitation")
-# 
-# liquorRetail <- 
-#   read.socrata("https://data.cityofchicago.org/Community-Economic-Development/Business-Licenses-Cur   rent-Liquor-and-Public-Places/nrmj-3kcf") %>%
-#   filter(BUSINESS.ACTIVITY == "Retail Sales of Packaged Liquor") %>%
-#   dplyr::select(Y = LATITUDE, X = LONGITUDE) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Liquor_Retail")
-# 
-# neighborhoods <- 
-#   st_read("https://raw.githubusercontent.com/blackmad/neighborhoods/master/chicago.geojson") %>%
-#   st_transform(st_crs(fishnet)) 
-
-# saveRDS(abandonCars, "abandonCars.rds")
-# saveRDS(abandonBuildings, "abandonBuildings.rds")
-# saveRDS(graffiti, "graffiti.rds")
-# saveRDS(streetLightsOut, "streetLightsOut.rds")
-# saveRDS(sanitation, "sanitation.rds")
-# saveRDS(liquorRetail, "liquorRetail.rds")
-# saveRDS(neighborhoods, "neighborhoods.rds")
-abandonCars <- read_rds("abandonCars.rds")
-abandonBuildings <- read_rds("abandonBuildings.rds")
-graffiti <- read_rds("graffiti.rds")
-streetLightsOut <- read_rds("streetLightsOut.rds")
-sanitation <- read_rds("sanitation.rds")
-liquorRetail <- read_rds("liquorRetail.rds")
-neighborhoods <- read_rds("neighborhoods.rds")
-
-# health_clinics <- # Only STI and Mental Health.  WIC (women and children clinics) excluded.
-#   read_csv("Chicago_Department_of_Public_Health_Clinic_Locations.csv") %>%
-#   dplyr::select(Y = Latitude, X = Longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Public_Health_Clinics")
-# 
-# cooling_centers <-
-#   read.socrata("https://data.cityofchicago.org/resource/r23p-6uic.json") %>%
-#   dplyr::select(Y = location.latitude, X = location.longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Cooling_Centers")
-# 
-# warming_centers <-
-#   read.socrata("https://data.cityofchicago.org/resource/5a76-tqs9.json") %>%
-#   dplyr::select(Y = location.latitude, X = location.longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Warming_Centers")
-# 
-# police_stations <-
-#   read.socrata("https://data.cityofchicago.org/resource/gkur-vufi.json") %>%
-#   dplyr::select(Y = location.latitude, X = location.longitude) %>%
-#   na.omit() %>%
-#   st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
-#   st_transform(st_crs(fishnet)) %>%
-#   mutate(Legend = "Police_Stations")
-
-# saveRDS(cooling_centers, "cooling_centers.rds")
-# saveRDS(warming_centers, "warming_centers.rds")
-# saveRDS(police_stations, "police_stations.rds")
-# saveRDS(health_clinics, "health_clinics.rds")
-cooling_centers <- read_rds("cooling_centers.rds")
-warming_centers <- read_rds("warming_centers.rds")
-police_stations <- read_rds("police_stations.rds")
-health_clinics <- read_rds("health_clinics.rds")
-
-# # Map of new predictive features
-# ggplot() +
-#   geom_sf(data=chicagoBoundary) +
-#   geom_sf(data = rbind(abandonCars,streetLightsOut,abandonBuildings,
-#                        liquorRetail, graffiti, sanitation, cooling_centers,
-#                        warming_centers, police_stations, health_clinics),
-#           size = .1) +
-#   facet_wrap(~Legend, ncol = 3) +
-#   labs(title = "Risk Factors") +  
-#   mapTheme()
-
-# Note that cooling and warming centers... are the same thing!
-# Our two will be police stations and cooling centers, with health clinics as a bonus.
-
-vars_net <- 
-  rbind(abandonCars,streetLightsOut,abandonBuildings,
-        liquorRetail, graffiti, sanitation, cooling_centers,
-        police_stations, health_clinics) %>%
-  st_join(., fishnet, join=st_within) %>%
-  st_set_geometry(NULL) %>%
-  group_by(uniqueID, Legend) %>%
-  summarize(count = n()) %>%
-  full_join(fishnet) %>%
-  spread(Legend, count, fill=0) %>%
-  st_sf() %>%
-  dplyr::select(-`<NA>`) %>%
-  na.omit()
-
-vars_net
-
-vars_net.long <- 
-  vars_net %>%
-  gather(Variable, value, -geometry, -uniqueID)
-
-vars <- unique(vars_net.long$Variable)
-mapList <- list()
-
-for(i in vars[c(3,6,7)]){
-  mapList[[i]] <- 
-    ggplot() +
-    geom_sf(data = filter(vars_net.long, Variable == i), aes(fill=value), colour=NA) +
-    scale_fill_viridis(name="") +
-    labs(title=i) +
-    mapTheme()}
-
-# do.call(grid.arrange,c(mapList, ncol = 3, top = "Risk Factors by Fishnet"))
-
-vars_net$Abandoned_Buildings.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(abandonBuildings), 3)
-
-vars_net$Abandoned_Cars.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(abandonCars), 3)
-
-vars_net$Graffiti.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(graffiti), 3)
-
-vars_net$Liquor_Retail.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(liquorRetail), 3)
-
-vars_net$Street_Lights_Out.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(streetLightsOut), 3)
-
-vars_net$Sanitation.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(sanitation), 3)
-
-vars_net$Warming_Centers.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(warming_centers), 3)
-
-vars_net$Police_Stations.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(police_stations), 1)
-
-vars_net$Health_Clinics.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(health_clinics), 1)
-
-vars_net.long.nn <- 
-  vars_net %>%
-  dplyr::select(ends_with(".nn")) %>%
-  gather(Variable, value, -geometry, -uniqueID)
-
-vars <- unique(vars_net.long.nn$Variable)
-mapList <- list()
-
-for(i in vars){
-  mapList[[i]] <- 
-    ggplot() +
-    geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
-    scale_fill_viridis(name="") +
-    labs(title=i) +
-    mapTheme()}
-
-do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest Neighbor risk Factors by Fishnet"))
-
-loopPoint <-
-  neighborhoods %>%
-  filter(name == "Loop") %>%
-  st_centroid()
-
-vars_net$loopDistance =
-  st_distance(st_centroid(vars_net),loopPoint) %>%
-  as.numeric() 
-
-# ggplot() +
-#   geom_sf(data=vars_net, aes(fill=loopDistance)) +
-#   scale_fill_viridis() +
-#   labs(title="Euclidean distance to The Loop") +
-#   mapTheme() 
-
-final_net <-
-  left_join(crime_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
-
-final_net.localMorans <- 
-  cbind(
-    as.data.frame(localmoran(final_net$countBurglaries, final_net.weights)),
-    as.data.frame(final_net, NULL)) %>% 
-  st_sf() %>%
-  dplyr::select(Burglary_Count = countBurglaries, 
-                Local_Morans_I = Ii, 
-                P_Value = `Pr(z > 0)`) %>%
-  mutate(Significant_Hotspots = ifelse(P_Value <= 0.05, 1, 0)) %>%
-  gather(Variable, Value, -geometry)
-
-vars <- unique(final_net.localMorans$Variable)
-varList <- list()
-
-for(i in vars){
-  varList[[i]] <- 
-    ggplot() +
-    geom_sf(data = filter(final_net.localMorans, Variable == i), aes(fill = Value), colour=NA) +
-    scale_fill_viridis(name="") +
-    labs(title=i) +
-    mapTheme()}
-
-do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Burglary"))
-print("hi")
