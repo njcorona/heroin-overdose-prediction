@@ -413,6 +413,17 @@ firearms <- biz_licenses %>% filter(LICENSE == "DANGEROUS WEAPONS" |
                                     LICENSE == "RETAIL DEALER IN FIREARMS AND AMMUNITION")
 unique(firearms$LICENSE)
 
+# (8) Cabaret & pool halls
+funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" | 
+                                      LICENSE == "MASSAGE PRACTITIONER" |
+                                      LICENSE == "GAME ARCADE" |
+                                      LICENSE == "CABARET" |
+                                      LICENSE == "DANCE HALL" |
+                                      LICENSE == "SEXUALLY ORIENTED BUSINESS" |
+                                      LICENSE == "MASSAGE ESTABLISHMENT")
+unique(funTimes$LICENSE)
+
+
 ######################################################################################
 ##################################
 # Date ranges.
