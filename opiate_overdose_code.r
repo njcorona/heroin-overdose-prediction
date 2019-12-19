@@ -423,7 +423,6 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
                                       LICENSE == "MASSAGE ESTABLISHMENT")
 unique(funTimes$LICENSE)
 
-
 ######################################################################################
 ##################################
 # Date ranges.
