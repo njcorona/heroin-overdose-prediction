@@ -114,8 +114,9 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 # sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
 # saveRDS(sheriff, "sheriff.RDS")
 # 
-# zoning <- st_read("https://opendata.arcgis.com/datasets/b43c6f6671d54da298fd6110a3088557_11.geojson")
+# zoning <- st_read("https://opendata.arcgis.com/datasets/1dcafeb2b62d4a02b3a19ee5fc7041ce_4.geojson")
 # saveRDS(zoning, "zoning.RDS")
+#
 # # Census data
 # # Race from the 2010 US Census
 # racevars <- c(total_pop = "P003001",
@@ -216,7 +217,7 @@ districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police
 firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
 sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
 censusRace <- st_read("censusRace.shp") # race/ethnicity counts and %s by census tract
-acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on Git, which is a spatial prediction model of heroin overdose in Cincy)
+acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on GitHub, which is a spatial prediction model of heroin overdose in Cincy)
 zoning <- read_rds("zoning.RDS") %>% st_transform(3735)
 
 ######################################################################################
@@ -420,7 +421,10 @@ ggplot() + geom_sf(data = hamilton) + geom_sf(data = cincinnati) + geom_sf(data 
 ggplot() + geom_sf(data = hamilton) + geom_sf(data = hamilton_streets) + mapTheme()
 
 # Hamilton County zoning.
-ggplot() + geom_sf(data = hamilton) + geom_sf(data = zoning) + mapTheme()
+ggplot() + 
+  geom_sf(data = cincinnati) +
+  geom_sf(data = zoning) +
+  mapTheme()
 
 # Hamilton County firehouses.
 ggplot() +
@@ -749,6 +753,33 @@ for(i in vars){
 
 # Call this, Nick!
 do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest Neighbor risk Factors by Fishnet"))
+
+final_net <-
+  left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
+
+# Adding overlapping IDs, like neighborhood or zoning.
+# Testing with neighborhood, zoning, and census tract data.
+final_net <-
+  st_centroid(final_net) %>%
+  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
+  st_join(., dplyr::select(sna, SNA_NAME)) %>%
+  st_join(., dplyr::select(zoning, ZONE_TYPE)) %>%
+  st_set_geometry(NULL) %>%
+  left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
+  st_sf() %>%
+  na.omit()
+
+# For some reason, final_net has lots of duplicated values.
+final_net <- final_net[!duplicated(final_net),] 
+
+dplyr::select(final_net, SNA_NAME, ZONE_TYPE) %>%
+  gather(Variable, Value, -geometry) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  facet_wrap(~Variable) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Aggregate Areas") +
+  mapTheme() + theme(legend.position = "none")
 
 ######################################################################################
 ##################################
