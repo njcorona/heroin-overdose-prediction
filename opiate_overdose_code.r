@@ -246,6 +246,7 @@ biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
   filter(!is.na(LATITUDE)) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
+unique(biz_licenses$LICENSE)
 
 ######################################################################################
 ############################################
