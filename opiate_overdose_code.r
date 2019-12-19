@@ -408,6 +408,11 @@ abandoned_vehicles <- code %>% dplyr::filter(comp_type_desc == "Abandoned Vehicl
 complainedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Complaint")
 cleanedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Cleaning")
 
+# (7) Firearms and weapons dealers
+firearms <- biz_licenses %>% filter(LICENSE == "DANGEROUS WEAPONS" | 
+                                    LICENSE == "RETAIL DEALER IN FIREARMS AND AMMUNITION")
+unique(firearms$LICENSE)
+
 ######################################################################################
 ##################################
 # Date ranges.
