@@ -468,7 +468,7 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
 
 ######################################################################################
 ##################################
-# Code from markdown.
+# Code for markdown.
 ##################################
 ######################################################################################
 
@@ -498,14 +498,118 @@ ggplot() +
   labs(title= "Heroin-related EMS responses, Cincinnati, 2018") +
   mapTheme()
 
-crime_net <- 
-  narcotics %>% 
+heroin_net <- 
+  heroin_ems18 %>% 
   dplyr::select() %>% 
-  mutate(countNarcotics = 1) %>% 
+  mutate(countHeroinResponses = 1) %>% 
   aggregate(., fishnet, sum) %>%
-  mutate(countNarcotics = ifelse(is.na(countNarcotics), 0, countNarcotics),
+  mutate(countHeroinResponses = ifelse(is.na(countHeroinResponses), 0, countHeroinResponses),
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
+
+ggplot() +
+  geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
+  scale_fill_viridis() +
+  labs(title = "Count of Heroin Responses for the fishnet") +
+  mapTheme()
+
+# Small multiple map of risk factors
+ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data = rbind(abandoned_vehicles %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Abandoned_Cars"),
+                       funTimes %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Fun_Times"), 
+                       firearms %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Firearms_Vendors"),
+                       vacant_buildings %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Vacant_Buildings"), 
+                       nalox_sites %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Nalox_Sites")),
+          size = .1) +
+  facet_wrap(~Legend, ncol = 2) +
+  labs(title = "Risk Factors") +  
+  mapTheme()
+
+# Aggregate the count data into the fishnet cells.
+vars_net <- 
+  rbind(abandoned_vehicles %>% dplyr::select() %>%
+          st_transform(st_crs(fishnet)) %>%
+          mutate(Legend = "Abandoned_Cars"),
+        funTimes %>% dplyr::select() %>%
+          st_transform(st_crs(fishnet)) %>%
+          mutate(Legend = "Fun_Times"), 
+        firearms %>% dplyr::select() %>%
+          st_transform(st_crs(fishnet)) %>%
+          mutate(Legend = "Firearms_Vendors"),
+        vacant_buildings %>% dplyr::select() %>%
+          st_transform(st_crs(fishnet)) %>%
+          mutate(Legend = "Vacant_Buildings"), 
+        nalox_sites %>% dplyr::select() %>%
+          st_transform(st_crs(fishnet)) %>%
+          mutate(Legend = "Nalox_Sites")) %>%
+  st_join(., fishnet, join=st_within) %>%
+  st_set_geometry(NULL) %>%
+  group_by(uniqueID, Legend) %>%
+  summarize(count = n()) %>%
+  full_join(fishnet) %>%
+  spread(Legend, count, fill=0) %>%
+  st_sf() %>%
+  dplyr::select(-`<NA>`) %>%
+  na.omit()
+
+# vars_net
+
+vars_net.long <- 
+  vars_net %>%
+  gather(Variable, value, -geometry, -uniqueID)
+
+vars <- unique(vars_net.long$Variable)
+mapList <- list()
+
+for(i in vars){
+  mapList[[i]] <- 
+    ggplot() +
+    geom_sf(data = filter(vars_net.long, Variable == i), aes(fill=value), colour=NA) +
+    scale_fill_viridis(name="") +
+    labs(title=i) +
+    mapTheme()}
+
+# This takes a while.
+do.call(grid.arrange,c(mapList, ncol =2, top = "Risk Factors by Fishnet"))
+
+vars_net$abandoned_vehicles.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(abandoned_vehicles), 4)
+
+vars_net$vacant_buildings.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(vacant_buildings), 4)
+
+vars_net$funTimes.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(funTimes), 3)
+
+vars_net.long.nn <- 
+  vars_net %>%
+  dplyr::select(ends_with(".nn")) %>%
+  gather(Variable, value, -geometry, -uniqueID)
+
+vars <- unique(vars_net.long.nn$Variable)
+mapList <- list()
+
+for(i in vars){
+  mapList[[i]] <- 
+    ggplot() +
+    geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
+    scale_fill_viridis(name="") +
+    labs(title=i) +
+    mapTheme()}
+
+# Call this, Nick!
+do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest Neighbor risk Factors by Fishnet"))
 
 ######################################################################################
 ##################################
