@@ -579,6 +579,14 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
                                       LICENSE == "MASSAGE ESTABLISHMENT")
 # unique(funTimes$LICENSE)
 
+# (9) Union Terminal location for Euclidean distance
+lat <- c(-84.53228)
+long <- c(39.108841)
+unionTerminal <- as.data.frame(cbind(lat, long))
+unionTerminal <- unionTerminal %>% st_as_sf(coords = c("long", "lat"), crs = 4326, 
+                                            agr = "constant") %>%
+  st_transform(3735)
+
 ######################################################################################
 ##################################
 # Date ranges.
@@ -651,6 +659,11 @@ ggplot() +
   scale_fill_viridis() +
   labs(title = "Count of Heroin Responses for the fishnet") +
   mapTheme()
+
+# Euclidean distance 
+UTpoint <-
+  unionTerminal %>%
+  st_centroid()
 
 # Small multiple map of risk factors
 ggplot() +
