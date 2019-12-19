@@ -8,6 +8,7 @@
 
 library(here)
 library(tidyverse)
+library(dplyr)
 library(maps)
 library(tools)
 library(rnaturalearth)
@@ -250,6 +251,10 @@ biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+# Weather measured from Cincinnati airport.
+weather <- read_csv("weather.csv")
+weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, HourlyPrecipitation, SOURCE, REPORT_TYPE)
+
 ######################################################################################
 ############################################
 # Basic boundary and point visualizations. #
@@ -447,6 +452,8 @@ unique(funTimes$LICENSE)
 # code: 2001-01-02 to 2019-11-20
 
 # heroin_ems: 2015-07-22 to 2019-11-19
+
+# weather: 2015-01-01 to 2019-12-19
 
 ######################################################################################
 ##################################
