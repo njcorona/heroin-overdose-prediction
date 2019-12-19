@@ -9,20 +9,85 @@ output:
     theme: united
   
 ---
-```{r setup, echo=TRUE}
-knitr::opts_chunk$set(echo = TRUE, results=TRUE, message = FALSE, 
-                      warning=FALSE, fig.align="center", cache=FALSE)
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE, results = TRUE, message = FALSE, 
+                      warning = FALSE, fig.align="center", cache=FALSE)
 ```
 
 ```{r load, results="hide"}
 
 # Load packages
+library(here)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(maps)
+library(tools)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+library(QuantPsyc)
+library(RSocrata)
+library(viridis)
+library(caret)
+library(spatstat)
+library(spdep)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(tidycensus)
+library(stringr)
+library(lubridate)
+census_api_key("f4a1e79b1b513acf5523856785193ebfdecdd406") # This is my personal API key.
+                                                           # Please don't use it after  
+                                                           # this project concludes!
+
+mapTheme <- function(base_size = 12) {
+  theme(
+    text = element_text( color = "black"),
+    plot.title = element_text(size = 14,colour = "black"),
+    plot.subtitle=element_text(face="italic"),
+    plot.caption=element_text(hjust=0),
+    axis.ticks = element_blank(),
+    panel.background = element_blank(),axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(colour = "black", fill=NA, size=2)
+  )
+}
+
+nn_function <- function(measureFrom,measureTo,k) {
+  measureFrom_Matrix <-
+    as.matrix(measureFrom)
+  measureTo_Matrix <-
+    as.matrix(measureTo)
+  nn <-   
+    get.knnx(measureTo, measureFrom, k)$nn.dist
+  output <-
+    as.data.frame(nn) %>%
+    rownames_to_column(var = "thisPoint") %>%
+    gather(points, point_distance, V1:ncol(.)) %>%
+    arrange(as.numeric(thisPoint)) %>%
+    group_by(thisPoint) %>%
+    summarize(pointDistance = mean(point_distance)) %>%
+    arrange(as.numeric(thisPoint)) %>% 
+    dplyr::select(-thisPoint) %>%
+    pull()
+  
+  return(output)  
+}
+
+palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 
 ```
 
 # Introduction
 
-The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
+The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, the illicit drug heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
 
 The following analysis focuses on southwest Ohio's largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner's office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard [online](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
 
@@ -38,7 +103,7 @@ Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that her
 
 Data for this analysis were gathered from the following sources. Information spans the years 2015 - 2019 unless otherwise noted.
 
-  - [Open Data Cincinnati](https://data.cincinnati-oh.gov/) 
+  - **[Open Data Cincinnati](https://data.cincinnati-oh.gov/)**
       - Emergency Medical Services calls
       - 311 non-emergency service requests 
       - Crime (2015-2019)
@@ -50,23 +115,219 @@ Data for this analysis were gathered from the following sources. Information spa
       - Locations of firearms and weapons dealers
       - Locations of pool halls, 
       - Female-owned small businesses
-  - [Take Charge Ohio](https://takechargeohio.org/map)
+  - **[Take Charge Ohio](https://takechargeohio.org/map)**
       - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
-  - [United States Census](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml)
+  - **[United States Census](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml)**
       - Racial/ethnic composition of census tracts (2010) 
-  - [United States American Community Survey](https://www.census.gov/programs-surveys/acs)
+  - **[United States American Community Survey](https://www.census.gov/programs-surveys/acs)**
       - Sample-based estimates of census-tract-level age, sex, education level, income, employment, poverty and home value data (2015)
-  - [Longitudinal Tract Database]((https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm)
+  - **[Longitudinal Tract Database](https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm)**
       - Public-use dataset re-estimating census data from the year 2000 within 2010 tract boundaries to enable analysis of change by tract
-  - [USGS](https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based)
+  - **[USGS](https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based)**
       - Ohio state, county, city and street lines and boundaries (2019)
-  - [National Weather Service](https://www.weather.gov/)
+  - **[National Weather Service](https://www.weather.gov/)**
       - Temperature 
       - Precipitation 
-  - [Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)
-      - Fast food chain restaurant locations (After Li et al. (2019)[^13] suggested that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
+  - **[Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)**
+      - Fast food chain restaurant locations (Li et al. (2019)[^13] found that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
+      
+```{r data}
+######################################################################################
+#############################
+# Loading data from online. #
+#############################
+######################################################################################
 
-```{r summary_stats}
+# ems <- read.socrata("https://data.cincinnati-oh.gov/resource/vnsz-a3wp.csv") 
+# saveRDS(ems, "ems.RDS")
+#
+# drugs_cops <- read.socrata("https://data.cincinnati-oh.gov/resource/3gx7-se9a.csv")
+# saveRDS(drugs_cops, "drugs_cops.RDS")
+#
+# heroin_cops <- read.socrata("https://data.cincinnati-oh.gov/resource/7mtn-nnb5.csv")
+# saveRDS(heroin_cops, "heroin_cops.RDS")
+#
+# cops <- read.socrata("https://data.cincinnati-oh.gov/resource/gexm-h6bt.csv")
+# saveRDS(cops, "cops.RDS")
+# 
+# crimes <- read.socrata("https://data.cincinnati-oh.gov/resource/k59e-2pvf.csv")
+# saveRDS(crimes, "crimes.RDS")
+# 
+# c311 <- read.socrata("https://data.cincinnati-oh.gov/resource/4cjh-bm8b.csv")
+# saveRDS(c311, "c311.RDS")
+# 
+# code <- read.socrata("https://data.cincinnati-oh.gov/resource/cncm-znd6.csv")
+# saveRDS(code, "code.RDS")
+#
+# cincinnati <- st_read("https://opendata.arcgis.com/datasets/ed78f4754b044ac5815d0a9efe9bb336_1.geojson")
+# saveRDS(cincinnati, "cincinnati.RDS")
+# 
+# sna <- st_read("https://opendata.arcgis.com/datasets/572561553c9e4d618d2d7939c5261d46_0.geojson")
+# saveRDS(sna, "sna.RDS")
+# 
+# districts_cops <- st_read("https://opendata.arcgis.com/datasets/9bc1afaff72e4f44a6d19280c159c951_4.geojson")
+# saveRDS(districts_cops, "districts_cops.RDS")
+# 
+# firehouses <- st_read("https://opendata.arcgis.com/datasets/a6f043d181f94e37a274975a3718b7af_16.geojson")
+# saveRDS(firehouses, "firehouses.RDS")
+# 
+# sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
+# saveRDS(sheriff, "sheriff.RDS")
+# 
+# zoning <- st_read("https://opendata.arcgis.com/datasets/b43c6f6671d54da298fd6110a3088557_11.geojson")
+# saveRDS(zoning, "zoning.RDS")
+# 
+# # Census data
+# # Race from the 2010 US Census
+# racevars <- c(total_pop = "P003001",
+#               white = "P003002", 
+#               black = "P003003", 
+#               asian = "P003005", 
+#               hispanic = "P004003",
+#               two_or_more = "P003008")
+# censusRace <- get_decennial(geography = "tract", variables = racevars, state = 39, 
+#                             county = 061, geometry = TRUE) %>% st_transform(3735)
+# censusRace <- censusRace %>% 
+#   spread(key = variable, value = value) %>%
+#   mutate(prop_white = round(white/total_pop,4),
+#          prop_black = round(black/total_pop,4),
+#          prop_asian = round(asian/total_pop,4),
+#          prop_hispanic = round(hispanic/total_pop,4),
+#          prop_two = round(two_or_more/total_pop,4)) %>%
+#   gather("variable", "value", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, value, geometry)
+# st_write(censusRace, "censusRace.shp")
+
+# Other place-related variables from the 2015 American Community Survey
+# v15 <- load_variables(2015, "acs5", cache = TRUE)
+# write_csv(v15,"acs_vars_2015.csv")
+# acsvars <- c(total_pop = "B01003_001",
+#                total_males = "B01001_002",
+#                males_18_19 = "B01001_007",
+#                males_20 = "B01001_008",
+#                males_21 = "B01001_009",
+#                males_22_24 = "B01001_010",
+#                males_25_29 = "B01001_011",
+#                males_30_34 = "B01001_012",
+#                males_35_39 = "B01001_013",
+#                males_40_44 = "B01001_014",
+#                males_45_49 = "B01001_015",
+#                males_50_54 = "B01001_016",
+#                males_55_59 = "B01001_017",
+#                males_60_61 = "B01001_018",
+#                males_62_64 = "B01001_019",
+#                males_65_66 = "B01001_020",
+#                males_67_69 = "B01001_021",
+#                males_70_74 = "B01001_022",
+#                males_75_79 = "B01001_023",
+#                males_80_84 = "B01001_024",
+#                males_85plus = "B01001_025",
+#                medincome = "B19013_001",
+#                per_capita_income = "B19301_001",
+#                total_blw_poverty_lvl = "B17020_002",
+#                median_home_value = "B25077_001",
+#                bachelors_or_higher = "B23006_023",
+#                unemployed_over_16yrs = "B23025_007"
+#                )
+# acsData <- get_acs(geography = "tract",
+#                    variables = acsvars,
+#                    state = 39,
+#                    county = 061,
+#                    geometry = TRUE) %>% st_transform(3735)
+# acsData <- acsData %>%
+#   dplyr::select(-moe) %>%
+#   spread(key = variable, value = estimate) %>%
+#   mutate(log_pop = log(total_pop),
+#          prop_males = round(total_males/total_pop,4),
+#          prop_males_18to24 = round((males_18_19+males_20+males_21+males_22_24)/total_males,4),
+#          prop_males_25to34 = round((males_25_29+males_30_34)/total_males,4),
+#          prop_males_35to49 = round((males_35_39+males_40_44+males_45_49)/total_males,4),
+#          prop_males_50to64 = round((males_50_54+males_55_59+males_60_61+males_62_64)/total_males,4),
+#          prop_males_65up = round((males_65_66+males_67_69+males_70_74+males_75_79+males_85plus)/total_males,4),
+#          prop_poverty = round(total_blw_poverty_lvl/total_pop,4),
+#          prop_bach_or_higher = round(bachelors_or_higher/total_pop,4),
+#          prop_unempl = round(unemployed_over_16yrs/total_pop,4)) %>%
+#   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, estimate, geometry)
+# acsDataTEMP <- acsData %>% filter(stringr::str_detect(variable, 'prop')) # checking to make sure my 'proportion' variables aren't out of whack
+# min(acsDataTEMP$estimate) # should be between 0 and 1
+# max(acsDataTEMP$estimate) # should be between 0 and 1
+# st_write(acsData, "acsData.shp", update = T)
+
+######################################################################################
+################################
+# Loading data from RDS files. #
+################################
+######################################################################################
+
+ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls
+drugs_cops <- read_rds("drugs_cops.RDS") %>% as_tibble() # Drug-related police data
+heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # Heroin-related police data
+crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported in Cincinnati
+c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls
+code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement
+cincinnati <- read_rds("cincinnati.RDS") %>% st_transform(3735) # Cincinnati city boundary shapefile.
+sna <- read_rds("sna.RDS") %>% st_transform(3735) # Cincinnati SNA (Statistical Neighborhood Approximations) Boundaries
+districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts.
+firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
+sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
+censusRace <- st_read("censusRace.shp") # race/ethnicity counts and %s by census tract
+acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on Git, which is a spatial prediction model of heroin overdose in Cincy)
+zoning <- read_rds("zoning.RDS") %>% st_transform(3735)
+
+######################################################################################
+##################################
+# Loading data downloaded files. #
+##################################
+######################################################################################
+
+# naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
+# note this was manually geocoded
+nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
+  st_transform(3735) 
+
+# Hamilton streets (source: https://catalog.data.gov/dataset/tiger-line-shapefile-2014-county-hamilton-county-oh-all-roads-county-based-shapefile)
+hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
+  st_transform(3735) 
+
+# Buildings ordered vacant by the city because unsafe/condemned/etc (source: City of Cincinnati http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
+#vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) 
+vacant_buildings <- st_read("vacantbldgs.shp") %>% st_transform(3735) # updating with shapefile created in ArcMap
+
+# Ohio counties, state boundary, and Hamilton County only
+ohio_counties <- st_read("tl_2016_39_cousub.shp") %>% st_transform(3735) # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
+ohio_boundary <- st_union(ohio_counties)
+
+hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
+  st_transform(3735)
+
+# Special business licenses 
+biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
+  filter(!is.na(LATITUDE)) %>%
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+# Weather measured from Cincinnati airport.
+weather <- read_csv("weather.csv")
+weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, HourlyPrecipitation, SOURCE, REPORT_TYPE)
+
+# Fast food chain locations
+ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
+  st_transform(3735)
+```
+
+# Exploratory approach
+
+Our exploration of Cincinnati data sought to identify factors that co-occur with overdose events. We sought to find correlates with our outcome of interest, that is, EMS calls either caused explicitly in response to heroin overdoses or that led to the administration of Narcan in Cincinnati.
+
+### Space/time process of heroin overdose events
+
+This analysis focuses on heroin overdoses specifically. Literature from the Hamilton County Department of Public Health, Ohio Department of Health, National Institute on Drug Abuse and Centers for Disease Control report that the number of heroin overdose deaths in Ohio increased sharply between 2010 and 2016, specifically reporting a statistically significant one-year increase in Ohio from 2016 to 2017[^15], and have been in decline since that time[^16]. (Drug overdose deaths caused by the synthetic opioid Fentanyl have caused an increase in _all_ opioid overdose deaths during this same time period, but an analysis of Fentanyl is outside the scope of this project)[^17]. 
+
+Data from Cincinnati reflect this trend.
+
+```{r exploratory}
 
 ```
 
@@ -161,9 +422,9 @@ In summary, I identify the following promising predictive features:
 # Conclusion
 
 # References
-[^1] National Institute on Drug Abuse. (2019). Opioid summaries by state. Accessed from https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state
-[^2] National Institute on Drug Abuse. (2019). Pennsylvania opiod summary. Accessed from https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary
-[^3] National Institute on Drug Abuse. (2019). Indiana opiod summary. Accessed from https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary
+[^1]: National Institute on Drug Abuse. (2019). Opioid summaries by state. Accessed from https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state
+[^2]: National Institute on Drug Abuse. (2019). Pennsylvania opiod summary. Accessed from https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary
+[^3]: National Institute on Drug Abuse. (2019). Indiana opiod summary. Accessed from https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary
 [^4]: Woolf, S.H. & Shoomaker, H. (2019). Life expectancy and mortality rates in the United States, 1959 - 2017. Journal of the American Medical Association, 322(20). 
 [^5]: National Institute on Drug Abuse. (2019). Ohio opiod summary. Accessed from https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary
 [^6]: Ohio Department of Health. (2017). Ohio drug overdose data: general findings. Accessed from https://odh.ohio.gov/wps/wcm/connect/gov/5deb684e-4667-4836-862b-cb5eb59acbd3/2017_OhioDrugOverdoseReport.pdf?MOD=AJPERES&CONVERT_TO=url&CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-5deb684e-4667-4836-862b-cb5eb59acbd3-moxPbu6
@@ -175,3 +436,6 @@ In summary, I identify the following promising predictive features:
 [^12]: insert citation
 [^13]: Li, Z.R., Xie, E., Crawford, F.W., Warren, J.L., McConnell, K., Copple, J.T., Johnson, T., & Gonsalves, G.S. (2019). Suspected heroin-related overdoses incidents in Cincinnati, Ohio: A spatiotemporal analysis. PLOS Medicine, 16(11), pp. 1-15.
 [^14]: Bates, S., Leonenko, V., Rineer, J., & Bobashev, G. (2018). Using synthetic populations to understand geospatial patterns in opioid related overdose and predicted opioid misuse. Computational and Mathematical Organization Theory, 25, pp. 25-36.
+[^15]: Centers for Disease Control. (2017). Drug overdose deaths. Accessed from https://www.cdc.gov/drugoverdose/data/statedeaths.html
+[^16]: Ohio Department of Health. (2018). 2018 Ohio Drug Overdose Data: General FIndings. Accessed from https://odh.ohio.gov/wps/wcm/connect/gov/d9ee6d3b-bf62-4b4f-8978-d7cfcd11348f/2018_OhioDrugOverdoseReport.pdf?MOD=AJPERES&CONVERT_TO=url&CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-d9ee6d3b-bf62-4b4f-8978-d7cfcd11348f-mXhFqNO; National Institute on Drug Abuse. (2019). Ohio Opioid Summary. Accessed from https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary
+[17^]: National Institute on Drug Abuse. Ohio Opioid Summary. Accessed from https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary

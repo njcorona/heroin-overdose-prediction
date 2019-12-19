@@ -1560,11 +1560,11 @@ div.tocify {
 <pre class="r"><code># Load packages</code></pre>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states’ epidemic of overdose deaths have driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state’s southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.</p>
-<p>The following analysis focuses on southwest Ohio’s largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an “epidemic” in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner’s office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard <a href="https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/">online</a>.</p>
-<p>However, non-medical personnel are also a valuable overdose prevention resource, but less strategic planning seems to have been focused on the peers, family members, roommates and retailers of drug users at risk for heroin overdose. If non-medical persons were equipped with the overdose reversal drug naloxone and knew how to responsibly administer it, many deaths might be prevented. In 2017, the Hamilton County Department of Public Health (the county in which Cincinnati is located) founded the Narcan Distribution Collaborative (NDC) with a goal of distributing take-home kits of naloxone to members of the public at no charge[^9],[^10].</p>
-<p>The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and provider of naloxone in the region[^11]. The organization has distributed more than 20,000 doses of naloxone since 2017[^9], but non-medical personnel must seek out a distribution site and proactively acquire a kit [^12]. We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).</p>
-<p>Two recent spatial analyses of Cincinnati’s EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents’ age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing) or retail common to low-income neighborhoods (fast food restaurants, [insert example]), and some crime types [insert examples]. The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations.</p>
+<p>The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>,<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>,<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>. These four states’ epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a>, with fatalities most pronounced in the state’s southwestern counties, where overdose death rates are two to four times the national average<a href="#fn6" class="footnote-ref" id="fnref6"><sup>6</sup></a>,<a href="#fn7" class="footnote-ref" id="fnref7"><sup>7</sup></a>. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.</p>
+<p>The following analysis focuses on southwest Ohio’s largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an “epidemic” in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner’s office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events<a href="#fn8" class="footnote-ref" id="fnref8"><sup>8</sup></a>. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals<a href="#fn9" class="footnote-ref" id="fnref9"><sup>9</sup></a>. These data are currently viewable in a public dashboard <a href="https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/">online</a>.</p>
+<p>However, non-medical personnel are also a valuable overdose prevention resource, but less strategic planning seems to have been focused on the peers, family members, roommates and retailers of drug users at risk for heroin overdose. If non-medical persons were equipped with the overdose reversal drug naloxone and knew how to responsibly administer it, many deaths might be prevented. In 2017, the Hamilton County Department of Public Health (the county in which Cincinnati is located) founded the Narcan Distribution Collaborative (NDC) with a goal of distributing take-home kits of naloxone to members of the public at no charge<a href="#fn10" class="footnote-ref" id="fnref10"><sup>10</sup></a>,<a href="#fn11" class="footnote-ref" id="fnref11"><sup>11</sup></a>.</p>
+<p>The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and provider of naloxone in the region<a href="#fn12" class="footnote-ref" id="fnref12"><sup>12</sup></a>. The organization has distributed more than 20,000 doses of naloxone since 2017<a href="#fn13" class="footnote-ref" id="fnref13"><sup>13</sup></a>, but non-medical personnel must seek out a distribution site and proactively acquire a kit <a href="#fn14" class="footnote-ref" id="fnref14"><sup>14</sup></a>. We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).</p>
+<p>Two recent spatial analyses of Cincinnati’s EMS data<a href="#fn15" class="footnote-ref" id="fnref15"><sup>15</sup></a>,<a href="#fn16" class="footnote-ref" id="fnref16"><sup>16</sup></a> suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents’ age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing) or retail common to low-income neighborhoods (fast food restaurants, [insert example]), and some crime types [insert examples]. The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations.</p>
 </div>
 <div id="data" class="section level1">
 <h1>Data</h1>
@@ -1572,39 +1572,48 @@ div.tocify {
 <h3>Sources</h3>
 <p>Data for this analysis were gathered from the following sources. Information spans the years 2015 - 2019 unless otherwise noted.</p>
 <ul>
-<li><a href="https://data.cincinnati-oh.gov/">Open Data Cincinnati</a>
+<li><strong><a href="https://data.cincinnati-oh.gov/">Open Data Cincinnati</a></strong>
 <ul>
 <li>Emergency Medical Services calls</li>
-<li>311 non-emergency service requess</li>
+<li>311 non-emergency service requests</li>
 <li>Crime (2015-2019)</li>
 <li>Vacant, abandoned and condemned buildings</li>
 <li>Abandoned vehicles (via zoning code violations data)</li>
 <li>Land use/zoning</li>
 <li>Neighborhoods (modified to fit US 2010 census tracts)</li>
 <li>Locations of fire stations, EMS, police stations, hospitals, pharmacies</li>
-<li>Business locations</li>
+<li>Locations of firearms and weapons dealers</li>
+<li>Locations of pool halls,</li>
 <li>Female-owned small businesses</li>
 </ul></li>
-<li><a href="https://takechargeohio.org/map">Take Charge Ohio</a>
+<li><strong><a href="https://takechargeohio.org/map">Take Charge Ohio</a></strong>
 <ul>
-<li>Naloxone distribution sites (pharmacies, hospitals and clinics)</li>
+<li>Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)</li>
 </ul></li>
-<li><a href="https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml">United States Census</a>
+<li><strong><a href="https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml">United States Census</a></strong>
 <ul>
 <li>Racial/ethnic composition of census tracts (2010)</li>
 </ul></li>
-<li><a href="https://www.census.gov/programs-surveys/acs">United States American Community Survey</a>
+<li><strong><a href="https://www.census.gov/programs-surveys/acs">United States American Community Survey</a></strong>
 <ul>
 <li>Sample-based estimates of census-tract-level age, sex, education level, income, employment, poverty and home value data (2015)</li>
 </ul></li>
-<li><a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based">USGS</a>
+<li><strong><a href="https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm">Longitudinal Tract Database</a></strong>
 <ul>
-<li>Ohio state, county, city and street lines and boundaries</li>
+<li>Public-use dataset re-estimating census data from the year 2000 within 2010 tract boundaries to enable analysis of change by tract</li>
 </ul></li>
-<li>[National Weather Service]
+<li><strong><a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based">USGS</a></strong>
+<ul>
+<li>Ohio state, county, city and street lines and boundaries (2019)</li>
+</ul></li>
+<li><strong><a href="https://www.weather.gov/">National Weather Service</a></strong>
 <ul>
 <li>Temperature</li>
 <li>Precipitation</li>
+</ul></li>
+<li><strong><a href="www.google.com/maps">Google Maps</a>, <a href="https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america">QSR Magazine</a>, <a href="https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains">Wikipedia</a>, <a href="https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food">Thrillist</a></strong>
+<ul>
+<li>Fast food chain restaurant locations (After Li et al. (2019)<a href="#fn17" class="footnote-ref" id="fnref17"><sup>17</sup></a> suggested that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).</li>
 </ul></li>
 </ul>
 </div>
@@ -1632,11 +1641,11 @@ div.tocify {
 </div>
 <div id="modeling-approach" class="section level1">
 <h1>Modeling approach</h1>
-<div id="training" class="section level2">
-<h2>Training</h2>
+<div id="training" class="section level3">
+<h3>Training</h3>
 </div>
-<div id="testing" class="section level2">
-<h2>Testing</h2>
+<div id="testing" class="section level3">
+<h3>Testing</h3>
 </div>
 </div>
 <div id="cross-validation" class="section level1">
@@ -1662,7 +1671,28 @@ div.tocify {
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
-<p>[^1] National Institute on Drug Abuse. (2019). Opioid summaries by state. Accessed from <a href="https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state" class="uri">https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state</a> [^2] National Institute on Drug Abuse. (2019). Pennsylvania opiod summary. Accessed from <a href="https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary" class="uri">https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary</a> [^3] National Institute on Drug Abuse. (2019). Indiana opiod summary. Accessed from <a href="https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary" class="uri">https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary</a> [^4]: Woolf, S.H. &amp; Shoomaker, H. (2019). Life expectancy and mortality rates in the United States, 1959 - 2017. Journal of the American Medical Association, 322(20). [^5]: National Institute on Drug Abuse. (2019). Ohio opiod summary. Accessed from <a href="https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary" class="uri">https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary</a> [^6]: Ohio Department of Health. (2017). Ohio drug overdose data: general findings. Accessed from <a href="https://odh.ohio.gov/wps/wcm/connect/gov/5deb684e-4667-4836-862b-cb5eb59acbd3/2017_OhioDrugOverdoseReport.pdf?MOD=AJPERES&amp;CONVERT_TO=url&amp;CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-5deb684e-4667-4836-862b-cb5eb59acbd3-moxPbu6" class="uri">https://odh.ohio.gov/wps/wcm/connect/gov/5deb684e-4667-4836-862b-cb5eb59acbd3/2017_OhioDrugOverdoseReport.pdf?MOD=AJPERES&amp;CONVERT_TO=url&amp;CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-5deb684e-4667-4836-862b-cb5eb59acbd3-moxPbu6</a> [^7]: Mettler, K. (29 August 2016). ‘This is unprecedented:’ 174 heroin overdoses in 6 days in Cincinnati. The Washington Post. [^8]: City of Cincinnati. (2019). Heroin overdose responses. <a href="https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/" class="uri">https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/</a> [^9]: Hamilton County Department of Public Health. <a href="https://www.hamiltoncountyhealth.org/announcements/deaconess/" class="uri">https://www.hamiltoncountyhealth.org/announcements/deaconess/</a> [^10]: Hamilton County Department of Public Health. <a href="https://www.hamiltoncountyhealth.org/harm-reduction/narcan/" class="uri">https://www.hamiltoncountyhealth.org/harm-reduction/narcan/</a> [^11]: Ingram, T. (2017). Narcan Distribution Collaborative: Expanding acess in Hamilton County, Ohio and the impacts. Accessed from <a href="https://www.naccho.org/uploads/downloadable-resources/49-51-Hamilton-County-Narcan-Distribution-Collaborative.pdf" class="uri">https://www.naccho.org/uploads/downloadable-resources/49-51-Hamilton-County-Narcan-Distribution-Collaborative.pdf</a> [^12]: insert citation [^13]: Li, Z.R., Xie, E., Crawford, F.W., Warren, J.L., McConnell, K., Copple, J.T., Johnson, T., &amp; Gonsalves, G.S. (2019). Suspected heroin-related overdoses incidents in Cincinnati, Ohio: A spatiotemporal analysis. PLOS Medicine, 16(11), pp. 1-15. [^14]: Bates, S., Leonenko, V., Rineer, J., &amp; Bobashev, G. (2018). Using synthetic populations to understand geospatial patterns in opioid related overdose and predicted opioid misuse. Computational and Mathematical Organization Theory, 25, pp. 25-36.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>National Institute on Drug Abuse. (2019). Opioid summaries by state. Accessed from <a href="https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state" class="uri">https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state</a><a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>National Institute on Drug Abuse. (2019). Pennsylvania opiod summary. Accessed from <a href="https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary" class="uri">https://www.drugabuse.gov/opioid-summaries-by-state/pennsylvania-opioid-summary</a><a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p>National Institute on Drug Abuse. (2019). Indiana opiod summary. Accessed from <a href="https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary" class="uri">https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state/indiana-opioid-summary</a><a href="#fnref3" class="footnote-back">↩</a></p></li>
+<li id="fn4"><p>Woolf, S.H. &amp; Shoomaker, H. (2019). Life expectancy and mortality rates in the United States, 1959 - 2017. Journal of the American Medical Association, 322(20).<a href="#fnref4" class="footnote-back">↩</a></p></li>
+<li id="fn5"><p>National Institute on Drug Abuse. (2019). Ohio opiod summary. Accessed from <a href="https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary" class="uri">https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary</a><a href="#fnref5" class="footnote-back">↩</a></p></li>
+<li id="fn6"><p>National Institute on Drug Abuse. (2019). Ohio opiod summary. Accessed from <a href="https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary" class="uri">https://www.drugabuse.gov/opioid-summaries-by-state/ohio-opioid-summary</a><a href="#fnref6" class="footnote-back">↩</a></p></li>
+<li id="fn7"><p>Ohio Department of Health. (2017). Ohio drug overdose data: general findings. Accessed from <a href="https://odh.ohio.gov/wps/wcm/connect/gov/5deb684e-4667-4836-862b-cb5eb59acbd3/2017_OhioDrugOverdoseReport.pdf?MOD=AJPERES&amp;CONVERT_TO=url&amp;CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-5deb684e-4667-4836-862b-cb5eb59acbd3-moxPbu6" class="uri">https://odh.ohio.gov/wps/wcm/connect/gov/5deb684e-4667-4836-862b-cb5eb59acbd3/2017_OhioDrugOverdoseReport.pdf?MOD=AJPERES&amp;CONVERT_TO=url&amp;CACHEID=ROOTWORKSPACE.Z18_M1HGGIK0N0JO00QO9DDDDM3000-5deb684e-4667-4836-862b-cb5eb59acbd3-moxPbu6</a><a href="#fnref7" class="footnote-back">↩</a></p></li>
+<li id="fn8"><p>Mettler, K. (29 August 2016). ‘This is unprecedented:’ 174 heroin overdoses in 6 days in Cincinnati. The Washington Post.<a href="#fnref8" class="footnote-back">↩</a></p></li>
+<li id="fn9"><p>City of Cincinnati. (2019). Heroin overdose responses. <a href="https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/" class="uri">https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/</a><a href="#fnref9" class="footnote-back">↩</a></p></li>
+<li id="fn10"><p>Hamilton County Department of Public Health. <a href="https://www.hamiltoncountyhealth.org/announcements/deaconess/" class="uri">https://www.hamiltoncountyhealth.org/announcements/deaconess/</a><a href="#fnref10" class="footnote-back">↩</a></p></li>
+<li id="fn11"><p>Hamilton County Department of Public Health. <a href="https://www.hamiltoncountyhealth.org/harm-reduction/narcan/" class="uri">https://www.hamiltoncountyhealth.org/harm-reduction/narcan/</a><a href="#fnref11" class="footnote-back">↩</a></p></li>
+<li id="fn12"><p>Ingram, T. (2017). Narcan Distribution Collaborative: Expanding acess in Hamilton County, Ohio and the impacts. Accessed from <a href="https://www.naccho.org/uploads/downloadable-resources/49-51-Hamilton-County-Narcan-Distribution-Collaborative.pdf" class="uri">https://www.naccho.org/uploads/downloadable-resources/49-51-Hamilton-County-Narcan-Distribution-Collaborative.pdf</a><a href="#fnref12" class="footnote-back">↩</a></p></li>
+<li id="fn13"><p>Hamilton County Department of Public Health. <a href="https://www.hamiltoncountyhealth.org/announcements/deaconess/" class="uri">https://www.hamiltoncountyhealth.org/announcements/deaconess/</a><a href="#fnref13" class="footnote-back">↩</a></p></li>
+<li id="fn14"><p>insert citation<a href="#fnref14" class="footnote-back">↩</a></p></li>
+<li id="fn15"><p>Li, Z.R., Xie, E., Crawford, F.W., Warren, J.L., McConnell, K., Copple, J.T., Johnson, T., &amp; Gonsalves, G.S. (2019). Suspected heroin-related overdoses incidents in Cincinnati, Ohio: A spatiotemporal analysis. PLOS Medicine, 16(11), pp. 1-15.<a href="#fnref15" class="footnote-back">↩</a></p></li>
+<li id="fn16"><p>Bates, S., Leonenko, V., Rineer, J., &amp; Bobashev, G. (2018). Using synthetic populations to understand geospatial patterns in opioid related overdose and predicted opioid misuse. Computational and Mathematical Organization Theory, 25, pp. 25-36.<a href="#fnref16" class="footnote-back">↩</a></p></li>
+<li id="fn17"><p>Li, Z.R., Xie, E., Crawford, F.W., Warren, J.L., McConnell, K., Copple, J.T., Johnson, T., &amp; Gonsalves, G.S. (2019). Suspected heroin-related overdoses incidents in Cincinnati, Ohio: A spatiotemporal analysis. PLOS Medicine, 16(11), pp. 1-15.<a href="#fnref17" class="footnote-back">↩</a></p></li>
+</ol>
 </div>
 
 

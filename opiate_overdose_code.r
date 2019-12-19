@@ -9,6 +9,7 @@
 library(here)
 library(tidyverse)
 library(dplyr)
+library(janitor)
 library(maps)
 library(tools)
 library(rnaturalearth)
@@ -245,7 +246,7 @@ ohio_boundary <- st_union(ohio_counties)
 hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
   st_transform(3735)
 
-# Special business licenses (promising? still looking for fast food restaurants)
+# Special business licenses 
 biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
   filter(!is.na(LATITUDE)) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
@@ -258,6 +259,141 @@ weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, Ho
 # Fast food chain locations
 ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
   st_transform(3735)
+
+# # In case we want it ... gentrification measures by census tract. Perhaps non-gentrifying
+# # tracts are overdose prone? (Or maybe no tracts are gentrifying in Cincinatti?)
+# # This is just borrowed from our midterm code 
+# # Source: Longitudinal Tract Database 
+# # https://s4.ad.brown.edu/projects/diversity/Researcher/LTBDDload/DataList.aspx
+# # Census data from 2000, with 2010 tract IDs included
+# ltdb_fullMeasures_2000 <- read_csv("LTDB_Std_2000_fullcount.csv", col_names = T) %>% 
+#   filter(county == "Hamilton County" & state == "OH") %>%
+#   dplyr::select(tract_id = TRTID10,   # unique ID
+#          tract,
+#          POP00,     # total population 
+#          NHBLK00,   # count of non-hispanic black residents
+#          A60BLK00,  # count of black residents aged 60+
+#          NHWHT00    # count of non-hispanic white residents
+#   )
+# get_dupes(ltdb_fullMeasures_2000, tract_id)
+# 
+# # Census data from 2010, with 2010 tract ids
+# ltdb_fullMeasures_2010 <- read_csv("LTDB_Std_2010_fullcount.csv", col_names = T) %>% 
+#   filter(county == "Hamilton County" & state == "OH") %>%
+#   dplyr::select(tract_id = tractid,   # unique ID
+#          pop10,     # total population 
+#          nhblk10,   # count of non-hispanic black residents
+#          a60blk10,  # count of black residents aged 60+
+#          nhwht10    # count of non-hispanic white residents
+#   )
+# 
+# ltdb_sampleMeasures_2000 <- read_csv("ltdb_std_2000_sample_SFonly.csv", col_names = T) %>%
+#   select(tract_id = TRTID10, # unique ID
+#          POP00SF3,  # total pop, as estimated from sample data
+#          PROF00,    # sample estimate of persons in "professional occupations"
+#          MANUF00,   # sample estimate of persons in "manufacturing occupations"
+#          HINC00,    # median household income
+#          HINCW00,   # median household income for whites
+#          HHW00,     # total white households
+#          HINCB00,   # median household income for whites
+#          HHB00,     # total black households
+#          INCPC00,   # per capita income
+#          NPOV00,    # persons in poverty
+#          N65POV00,  # persons 65+ in poverty
+#          NBPOV00,   # blacks in poverty
+#          MHMVAL00,  # median home value 
+#          MRENT00,   # median gross rent
+#          H30OLD00,  # structures built >30 years ago
+#          H10YRS00,  # household heads moved into unit < 10 years ago
+#          HS00,      # persons with high school or less
+#          COL00      # persons with at least four-year college degree
+#   )
+# # ACS variables measured with sample data, from 2008-2012 ACS, with 2010 tract ID included
+# ltdb_sampleMeasures_2010 <- read_csv("ltdb_std_2010_sample_SFonly.csv", col_names = T) %>%
+#   select(tract_id = tractid, # unique ID
+#          pop12,     # total pop (as estimated from ACS)
+#          prof12,    # sample estimate of persons in "professional occupations"
+#          manuf12,   # sample estimate of persons in "manufacturing occupations"
+#          hinc12,    # median household income
+#          hincw12,   # median household income for whites
+#          hhw12,     # total white households
+#          hincb12,   # median household income for blacks
+#          hhb12,     # total black households
+#          incpc12,   # per capita income
+#          npov12,    # persons in poverty
+#          n65pov12,  # persons 65+ in poverty
+#          nbpov12,   # blacks in poverty
+#          pbpov12,   # % blacks in poverty
+#          mhmval12,  # median home value 
+#          mrent12,   # median gross rent
+#          h30old12,  # structures built >30 years ago
+#          h10yrs12,  # household heads moved into unit < 10 years ago
+#          phs12,     # % persons with high school or less
+#          pcol12,    # % persons with at least four-year college degree
+#   )
+# 
+# censusLongitudinal <- ltdb_fullMeasures_2000 %>%
+#   left_join(ltdb_sampleMeasures_2000, by = "tract_id") %>%
+#   left_join(ltdb_fullMeasures_2010, by = "tract_id") %>%
+#   left_join(ltdb_sampleMeasures_2010, by = "tract_id")
+# 
+# # Replace -999 missing code with NAs
+# censusLongitudinal <- mutate_at(censusLongitudinal, vars(POP00:h10yrs12), 
+#                                 list(~ ifelse( . == -999, NA, .)))
+# 
+# # Check for missingness
+# sapply(censusLongitudinal, function(x) sum(is.na(x)))
+# 
+# # Make percentage variables that are missing from 2000 sample data
+# censusLongitudinal <- censusLongitudinal %>%
+#   mutate(PBPOV00 = NBPOV00/POP00SF3,
+#          PHS00 = HS00/POP00SF3,
+#          PCOL00 = COL00/POP00SF3)
+# 
+# # Calculate the 50th, 75th and 90th percentile of median household income for 2000
+# stats::quantile(censusLongitudinal$HINC00, c(.5, .75, .9), na.rm = T)
+# 
+# # Calculate the change in (1) % of college-educated residents per tract, (2) median 
+# # monthly rent and (3) median home value, between 2000 and 2010/2012
+# censusLongitudinal <- censusLongitudinal %>%
+#   mutate(pcol_change = pcol12 - PCOL00,
+#          mrent_change = mrent12 - MRENT00,
+#          mhmv_change = mhmval12 - MHMVAL00)
+# # Calculate the 50th percentile of change in college-educated residents
+# stats::quantile(censusLongitudinal$pcol_change, c(.5), na.rm = T)
+# 
+# # Calculate the 50th and 75th percentile of change in median monthly rent
+# stats::quantile(censusLongitudinal$mrent_change, c(.5, .75), na.rm = T)
+# 
+# # Calculate the 50th and 75th percentil of change in median home value
+# stats::quantile(censusLongitudinal$mhmv_change, c(.5, .75), na.rm = T)
+# 
+# # Generate measure of gentrification
+# # Three-level variable 
+# censusLongitudinal <- censusLongitudinal %>% 
+#   mutate(pcol_change_flag = if_else(pcol_change < 53.5942, 0, 1))
+# censusLongitudinal <- censusLongitudinal %>% 
+#   mutate(mrent_change_flag = if_else(mrent_change >= 486 & mrent_change < 630, 1,
+#                                      if_else(mrent_change >= 630, 2, 0)))        
+# censusLongitudinal <- censusLongitudinal %>% 
+#   mutate(mhmv_change_flag = if_else(mhmv_change >= 290101.0 & mhmv_change < 351150.5, 1,
+#                                     if_else(mhmv_change >= 351150.5, 2, 0)))      
+# # This gentrification measure is based on Hirsch (2018), who suggests a three-level 
+# # measure in which gentrification is a three-level variable (0 = not gentrified, 1 = 
+# # gentrification, 2 = intense gentrification)
+# censusLongitudinal <- censusLongitudinal %>% 
+#   mutate(gentrification = if_else(pcol_change_flag == 0, 0, 
+#                                   if_else(pcol_change_flag == 1 & mrent_change_flag == 0 & mhmv_change_flag == 0, 0,
+#                                           if_else((pcol_change_flag == 1 & mrent_change_flag == 1) | (pcol_change_flag == 1 & mhmv_change_flag == 1), 1, 
+#                                                   if_else((pcol_change_flag == 1 & mrent_change_flag == 2) | (pcol_change_flag == 1 & mhmv_change_flag == 2), 2, as.double(NA))))))
+# 
+# # Change gentrification to a factor
+# censusLongitudinal$gentrification <- as.factor(censusLongitudinal$gentrification)
+# censusLongitudinal$gentrification <- factor(censusLongitudinal$gentrification, 
+#                                             labels = c("No gentrification", 
+#                                                        "Gentrification", 
+#                                                        "Intense gentrification"))
+# tabyl(censusLongitudinal$gentrification)
 
 ######################################################################################
 ############################################
