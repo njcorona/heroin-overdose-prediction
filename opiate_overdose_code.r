@@ -351,6 +351,17 @@ heroin_ems <- ems[which(
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
+heroin_ems$floor_date <- floor_date(ymd_hms(heroin_ems$create_time_incident, tz = "EST"), unit = "hour") %>% with_tz(tz = "UTC")
+weather$floor_date <- ymd_hms(weather$DATE, tz = "UTC") %>% floor_date(unit = "hour")
+
+heroin_ems <- left_join(heroin_ems, 
+                        weather %>% 
+                          dplyr::mutate(precipitation = HourlyPrecipitation,
+                                        temperature = HourlyDryBulbTemperature) %>%
+                          dplyr::select(floor_date, temperature, precipitation),
+                        by = c("floor_date")
+)
+
 heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
 heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
 heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
@@ -377,34 +388,34 @@ c311 <- c311[!is.na(c311$latitude), ] %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
-# Broad category.
-unique(sapply(str_split(c311$service_name, ","), function(x) {x[[1]]})) # Do not delete this.
-
-# Subcategory of the broad category.
-unique(sapply(str_split(c311$service_name, ","), function(x) {unlist(x)[2]})) # Do not delete this.
-
-unique(sapply(str_split(c311$service_name, ","), 
-              function(x) {x[[1]]}))[which(str_detect(
-                unique(sapply(str_split(c311$service_name, ","), 
-                              function(x) {x[[1]]})), "Graffiti"))]
-
-unique(sapply(str_split(c311$service_name, ","), 
-              function(x) {x[[1]]}))[which(str_detect(
-                unique(sapply(str_split(c311$service_name, ","), 
-                              function(x) {x[[1]]})), "Light"))]
-
-# Only for 2019 but I'm just curious whether it is correlated w/ overdoses.
-unique(sapply(str_split(c311$service_name, ","), 
-              function(x) {x[[1]]}))[which(str_detect(
-                unique(sapply(str_split(c311$service_name, ","), 
-                              function(x) {x[[1]]})), "Homeless"))]
+# # Broad category.
+# unique(sapply(str_split(c311$service_name, ","), function(x) {x[[1]]})) # Do not delete this.
+# 
+# # Subcategory of the broad category.
+# unique(sapply(str_split(c311$service_name, ","), function(x) {unlist(x)[2]})) # Do not delete this.
+# 
+# unique(sapply(str_split(c311$service_name, ","), 
+#               function(x) {x[[1]]}))[which(str_detect(
+#                 unique(sapply(str_split(c311$service_name, ","), 
+#                               function(x) {x[[1]]})), "Graffiti"))]
+# 
+# unique(sapply(str_split(c311$service_name, ","), 
+#               function(x) {x[[1]]}))[which(str_detect(
+#                 unique(sapply(str_split(c311$service_name, ","), 
+#                               function(x) {x[[1]]})), "Light"))]
+# 
+# # Only for 2019 but I'm just curious whether it is correlated w/ overdoses.
+# unique(sapply(str_split(c311$service_name, ","), 
+#               function(x) {x[[1]]}))[which(str_detect(
+#                 unique(sapply(str_split(c311$service_name, ","), 
+#                               function(x) {x[[1]]})), "Homeless"))]
 
 # (6) code
 code <- code %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
-unique(code$comp_type_desc)
+# unique(code$comp_type_desc)
 
 abandoned_vehicles <- code %>% dplyr::filter(comp_type_desc == "Abandoned Vehicle Code Enforcement")
 
@@ -416,7 +427,7 @@ cleanedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Clean
 # (7) Firearms and weapons dealers
 firearms <- biz_licenses %>% filter(LICENSE == "DANGEROUS WEAPONS" | 
                                     LICENSE == "RETAIL DEALER IN FIREARMS AND AMMUNITION")
-unique(firearms$LICENSE)
+# unique(firearms$LICENSE)
 
 # (8) Cabaret & pool halls
 funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" | 
@@ -426,7 +437,7 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
                                       LICENSE == "DANCE HALL" |
                                       LICENSE == "SEXUALLY ORIENTED BUSINESS" |
                                       LICENSE == "MASSAGE ESTABLISHMENT")
-unique(funTimes$LICENSE)
+# unique(funTimes$LICENSE)
 
 
 ######################################################################################
