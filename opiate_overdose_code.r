@@ -473,8 +473,14 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
 ######################################################################################
 
 fishnet <- 
-  st_make_grid(cincinnati, cellsize = 500) %>%
+  st_make_grid(cincinnati, cellsize = 1000) %>%
   st_sf()
+
+ggplot() + # Takes a while to generate.
+  geom_sf(data=cincinnati, fill=NA, colour="black") +
+  geom_sf(data=fishnet, fill=NA, colour="black") +
+  labs(title = "Cincinnati and the fishnet") +
+  mapTheme()
 
 fishnet <- 
   fishnet[cincinnati,] %>%
@@ -482,9 +488,14 @@ fishnet <-
   dplyr::select(uniqueID)
 
 ggplot() +
-  geom_sf(data=cincinnati, fill=NA, colour="black") +
-  geom_sf(data=fishnet, fill=NA, colour="black") +
-  labs(title = "Cincinnati and the fishnet") +
+  geom_sf(data=fishnet) +
+  labs(title = "Fishnet in Cincinnati") +
+  mapTheme()
+
+ggplot() + 
+  geom_sf(data = cincinnati) +
+  geom_sf(data = heroin_ems18, colour="red", size=0.05, show.legend = "point") +
+  labs(title= "Heroin-related EMS responses, Cincinnati, 2018") +
   mapTheme()
 
 crime_net <- 
