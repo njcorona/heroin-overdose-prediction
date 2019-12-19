@@ -15,8 +15,12 @@ knitr::opts_chunk$set(echo = TRUE, results = TRUE, message = FALSE,
 ```
 
 ```{r load, results="hide"}
+######################################################################################
+##############################################
+# Load packages, palettes, functions, themes #
+##############################################
+######################################################################################
 
-# Load packages
 library(here)
 library(tidyverse)
 library(dplyr)
@@ -40,10 +44,9 @@ library(kableExtra)
 library(tidycensus)
 library(stringr)
 library(lubridate)
-census_api_key("f4a1e79b1b513acf5523856785193ebfdecdd406") # This is my personal API key.
-                                                           # Please don't use it after  
-                                                           # this project concludes!
+census_api_key("f4a1e79b1b513acf5523856785193ebfdecdd406")
 
+# Themes and palettes
 mapTheme <- function(base_size = 12) {
   theme(
     text = element_text( color = "black"),
@@ -59,7 +62,9 @@ mapTheme <- function(base_size = 12) {
     panel.border = element_rect(colour = "black", fill=NA, size=2)
   )
 }
+palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 
+# Functions
 nn_function <- function(measureFrom,measureTo,k) {
   measureFrom_Matrix <-
     as.matrix(measureFrom)
@@ -81,61 +86,10 @@ nn_function <- function(measureFrom,measureTo,k) {
   return(output)  
 }
 
-palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
-
-```
-
-# Introduction
-
-The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, the illicit drug heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
-
-The following analysis focuses on southwest Ohio's largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner's office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard [online](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
-
-However, non-medical personnel are also a valuable overdose prevention resource, but less strategic planning seems to have been focused on the peers, family members, roommates and retailers of drug users at risk for heroin overdose. If non-medical persons were equipped with the overdose reversal drug naloxone and knew how to responsibly administer it, many deaths might be prevented. In 2017, the Hamilton County Department of Public Health (the county in which Cincinnati is located) founded the Narcan Distribution Collaborative (NDC) with a goal of distributing take-home kits of naloxone to members of the public at no charge[^9],[^10]. 
-
-The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and provider of naloxone in the region[^11]. The organization has distributed more than 20,000 doses of naloxone since 2017[^9], but non-medical personnel must seek out a distribution site and proactively acquire a kit [^12]. We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).
-
-Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing) or retail common to low-income neighborhoods (fast food restaurants, [insert example]), and some crime types [insert examples]. The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations. 
-
-# Data
-
-### Sources
-
-Data for this analysis were gathered from the following sources. Information spans the years 2015 - 2019 unless otherwise noted.
-
-  - **[Open Data Cincinnati](https://data.cincinnati-oh.gov/)**
-      - Emergency Medical Services calls
-      - 311 non-emergency service requests 
-      - Crime (2015-2019)
-      - Vacant, abandoned and condemned buildings
-      - Abandoned vehicles (via zoning code violations data)
-      - Land use/zoning
-      - Neighborhoods (modified to fit US 2010 census tracts)
-      - Locations of fire stations, EMS, police stations, hospitals, pharmacies
-      - Locations of firearms and weapons dealers
-      - Locations of pool halls, 
-      - Female-owned small businesses
-  - **[Take Charge Ohio](https://takechargeohio.org/map)**
-      - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
-  - **[United States Census](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml)**
-      - Racial/ethnic composition of census tracts (2010) 
-  - **[United States American Community Survey](https://www.census.gov/programs-surveys/acs)**
-      - Sample-based estimates of census-tract-level age, sex, education level, income, employment, poverty and home value data (2015)
-  - **[Longitudinal Tract Database](https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm)**
-      - Public-use dataset re-estimating census data from the year 2000 within 2010 tract boundaries to enable analysis of change by tract
-  - **[USGS](https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based)**
-      - Ohio state, county, city and street lines and boundaries (2019)
-  - **[National Weather Service](https://www.weather.gov/)**
-      - Temperature 
-      - Precipitation 
-  - **[Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)**
-      - Fast food chain restaurant locations (Li et al. (2019)[^13] found that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
-      
-```{r data}
 ######################################################################################
-#############################
-# Loading data from online. #
-#############################
+##########################
+# Load data from online. #
+##########################
 ######################################################################################
 
 # ems <- read.socrata("https://data.cincinnati-oh.gov/resource/vnsz-a3wp.csv") 
@@ -158,8 +112,8 @@ Data for this analysis were gathered from the following sources. Information spa
 # 
 # code <- read.socrata("https://data.cincinnati-oh.gov/resource/cncm-znd6.csv")
 # saveRDS(code, "code.RDS")
-#
-# cincinnati <- st_read("https://opendata.arcgis.com/datasets/ed78f4754b044ac5815d0a9efe9bb336_1.geojson")
+# 
+# cincinnati <- st_read("https://opendata.arcgis.com/datasets/ed78f4754b044ac5815d0a9efe9bb336_1.geojson") # Cincinnati city boundary shapefile.
 # saveRDS(cincinnati, "cincinnati.RDS")
 # 
 # sna <- st_read("https://opendata.arcgis.com/datasets/572561553c9e4d618d2d7939c5261d46_0.geojson")
@@ -255,9 +209,9 @@ Data for this analysis were gathered from the following sources. Information spa
 # st_write(acsData, "acsData.shp", update = T)
 
 ######################################################################################
-################################
-# Loading data from RDS files. #
-################################
+#############################
+# Load data from RDS files. #
+#############################
 ######################################################################################
 
 ems <- read_rds("ems.RDS") %>% as_tibble() # Emergency services calls
@@ -266,23 +220,23 @@ heroin_cops <- read_rds("heroin_cops.RDS") %>% as_tibble() # Heroin-related poli
 crimes <- read_rds("crimes.RDS") %>% as_tibble() # Crimes reported in Cincinnati
 c311 <- read_rds("c311.RDS") %>% as_tibble() # 311 calls
 code <- read_rds("code.RDS") %>% as_tibble() # Code enforcement
-cincinnati <- read_rds("cincinnati.RDS") %>% st_transform(3735) # Cincinnati city boundary shapefile.
+cincinnati <- read_rds("cincinnati.RDS") %>% st_transform(3735)
 sna <- read_rds("sna.RDS") %>% st_transform(3735) # Cincinnati SNA (Statistical Neighborhood Approximations) Boundaries
-districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts.
-firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
-sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
-censusRace <- st_read("censusRace.shp") # race/ethnicity counts and %s by census tract
-acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on Git, which is a spatial prediction model of heroin overdose in Cincy)
+districts_cops <- read_rds("districts_cops.RDS") %>% st_transform(3735) # Police districts
+firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses
+sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations
+censusRace <- st_read("censusRace.shp") # Race/ethnicity counts and %s by census tract
+acsData <- st_read("acsData.shp") # Covariates from American Community Survey 
 zoning <- read_rds("zoning.RDS") %>% st_transform(3735)
 
 ######################################################################################
-##################################
-# Loading data downloaded files. #
-##################################
+###############################
+# Load data downloaded files. #
+###############################
 ######################################################################################
 
-# naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
-# note this was manually geocoded
+# Naloxone access sites in Hamilton County (source: https://takechargeohio.org/map) 
+# Note this was manually geocoded in ArcMap
 nalox_sites <- read_csv("naloxone_distribution_sites.csv", col_names = T) %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735) 
@@ -292,8 +246,8 @@ hamilton_streets <- st_read("tl_2014_39061_roads.shp") %>%
   st_transform(3735) 
 
 # Buildings ordered vacant by the city because unsafe/condemned/etc (source: City of Cincinnati http://cagismaps.hamilton-co.org/cincinnatiServices/CodeEnforcement/CincinnatiVacantBuildingCases/)
-#vacant_buildings <- read_csv("vacantbldgs.csv", col_names = T) 
-vacant_buildings <- st_read("vacantbldgs.shp") %>% st_transform(3735) # updating with shapefile created in ArcMap
+# Note this was manually geocoded in ArcMap
+vacant_buildings <- st_read("vacantbldgs.shp") %>% st_transform(3735) 
 
 # Ohio counties, state boundary, and Hamilton County only
 ohio_counties <- st_read("tl_2016_39_cousub.shp") %>% st_transform(3735) # From:  https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based
@@ -303,6 +257,7 @@ hamilton <- st_union(ohio_counties[which(ohio_counties$COUNTYFP == "061"),]) %>%
   st_transform(3735)
 
 # Special business licenses 
+# Source: https://data.cincinnati-oh.gov/Growing-Economic-Opportunities/Business-Licenses/7dk3-gngs
 biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
   filter(!is.na(LATITUDE)) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
@@ -313,9 +268,89 @@ weather <- read_csv("weather.csv")
 weather <- weather %>% dplyr::select(STATION, DATE, HourlyDryBulbTemperature, HourlyPrecipitation, SOURCE, REPORT_TYPE)
 
 # Fast food chain locations
+# Manually generated using sources of information about fast food chains present in OH (see data source list) and KML file built in Google Maps
 ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
   st_transform(3735)
 ```
+
+# Introduction
+
+The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, the illicit drug heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
+
+The following analysis focuses on southwest Ohio's largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner's office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard [online](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
+
+```{r map_of_midwest}
+# Map
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE)) # state boundaries
+world <- ne_countries(scale = "medium", returnclass = "sf") # countries/states
+states <- cbind(states, st_coordinates(st_centroid(states))) # state names
+states$ID <- toTitleCase(states$ID) # convert state names to proper nouns
+ggplot() +
+  geom_sf(data = states, fill = NA) + 
+  geom_text(data = states, aes(X, Y, label = ID), size = 4) +
+  geom_sf(data = cincinnati, aes(fill = BND_NAME), alpha=0.3, color="#25CB10") +
+  scale_fill_manual(values = c("#25CB10")) +
+  coord_sf(xlim = c(-92, -79), ylim = c(36.15, 43.5), expand = FALSE) +
+  labs(title = "Cincinnati, OH", subtitle = "In the Midwest context") +
+  theme(legend.position = "none") +
+  mapTheme()
+```
+
+However, non-medical personnel are also a valuable overdose prevention resource, but less strategic planning seems to have been focused on the peers, family members, roommates and retailers of drug users at risk for heroin overdose. If non-medical persons were equipped with the overdose reversal drug naloxone and knew how to responsibly administer it, many deaths might be prevented. In 2017, the Hamilton County Department of Public Health (the county in which Cincinnati is located) founded the Narcan Distribution Collaborative (NDC) with a goal of distributing take-home kits of naloxone to members of the public at no charge[^9],[^10]. 
+
+The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and provider of naloxone in the region[^11]. The organization has distributed more than 20,000 doses of naloxone since 2017[^9], but non-medical personnel must seek out a distribution site and proactively acquire a kit [^12]. And naloxone distribution sites are not strategically placed near overdose clusters.
+
+```{r overdose_vs_naloxone}
+# Heroin overdose vs. Naloxone distribution sites in Hamilton County:
+ggplot() +
+  geom_sf(data = hamilton, fill = NA, color = "gray") +
+  geom_sf(data = hamilton_streets, color = "gray") +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  geom_sf(data = nalox_sites, size = 3, color = "#FA7800") +
+  scale_color_manual(labels = c("Heroin overdose", "Naloxone distribution site")) +
+  labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
+       subtitle = "Cincinnati, OH") +
+  mapTheme()
+```
+
+We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).
+
+Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing) or retail common to low-income neighborhoods (fast food restaurants, [insert example]), and some crime types [insert examples]. The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations. 
+
+# Data
+
+### Sources
+
+Data for this analysis were gathered from the following sources. Information spans the years 2015 - 2019 unless otherwise noted.
+
+  - **[Open Data Cincinnati](https://data.cincinnati-oh.gov/)**
+      - Emergency Medical Services calls
+      - 311 non-emergency service requests 
+      - Crime (2015-2019)
+      - Vacant, abandoned and condemned buildings
+      - Abandoned vehicles (via zoning code violations data)
+      - Land use/zoning
+      - Neighborhoods (modified to fit US 2010 census tracts)
+      - Locations of fire stations, EMS, police stations, hospitals, pharmacies
+      - Locations of firearms and weapons dealers
+      - Locations of pool halls, 
+      - Female-owned small businesses
+  - **[Take Charge Ohio](https://takechargeohio.org/map)**
+      - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
+  - **[United States Census](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml)**
+      - Racial/ethnic composition of census tracts (2010) 
+  - **[United States American Community Survey](https://www.census.gov/programs-surveys/acs)**
+      - Sample-based estimates of census-tract-level age, sex, education level, income, employment, poverty and home value data (2015)
+  - **[Longitudinal Tract Database](https://s4.ad.brown.edu/projects/diversity/Researcher/Bridging.htm)**
+      - Public-use dataset re-estimating census data from the year 2000 within 2010 tract boundaries to enable analysis of change by tract
+  - **[USGS](https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-ohio-current-county-subdivision-state-based)**
+      - Ohio state, county, city and street lines and boundaries (2019)
+  - **[National Weather Service](https://www.weather.gov/)**
+      - Temperature 
+      - Precipitation 
+  - **[Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)**
+      - Fast food chain restaurant locations (Li et al. (2019)[^13] found that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
 
 # Exploratory approach
 
@@ -325,10 +360,82 @@ Our exploration of Cincinnati data sought to identify factors that co-occur with
 
 This analysis focuses on heroin overdoses specifically. Literature from the Hamilton County Department of Public Health, Ohio Department of Health, National Institute on Drug Abuse and Centers for Disease Control report that the number of heroin overdose deaths in Ohio increased sharply between 2010 and 2016, specifically reporting a statistically significant one-year increase in Ohio from 2016 to 2017[^15], and have been in decline since that time[^16]. (Drug overdose deaths caused by the synthetic opioid Fentanyl have caused an increase in _all_ opioid overdose deaths during this same time period, but an analysis of Fentanyl is outside the scope of this project)[^17]. 
 
-Data from Cincinnati reflect this trend.
+Data from Cincinnati mirror this statewide trend. The following maps display the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019, as measured by EMS calls either caused explicitly in response to heroin overdoses or that led to the administration of naloxone (also called Narcan, an overdose-reversal drug).
 
 ```{r exploratory}
+# Outcome of interest: heroin overdose 
+ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
+ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
+ems15 <- ems[which(ems$year == "2015"),]
+ems16 <- ems[which(ems$year == "2016"),]
+ems17 <- ems[which(ems$year == "2017"),]
+ems18 <- ems[which(ems$year == "2018"),]
+ems19 <- ems[which(ems$year == "2019"),]
 
+# These years only have 1-17 records per year.
+crimes <- crimes[which(str_sub(crimes$date_reported, start = 1, end = 4) != 1991 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2003 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2007 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2008 &
+                         str_sub(crimes$date_reported, start = 1, end = 4) != 2009
+),]
+
+# These years only have 74-310 records per year.
+code <- code[which(str_sub(code$entered_date, start = 1, end = 4) != 1999 &
+                     str_sub(code$entered_date, start = 1, end = 4) != 2000
+),]
+
+# Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage,
+# used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries.
+# Nick also went through manually to confirm that the data dictionary doesn't miss any heroin-related incidents.
+heroin_ems <- ems[which(
+  str_detect(ems$disposition_text, "NAR") |
+    str_detect(ems$disposition_text, "NART") |
+    ems$incident_type_id == "HEROINF - FIRE ONLY" |
+    ems$incident_type_id == "HEROIN-COMBINED" |
+    ems$incident_type_id == "HEROINF-FIRE ONLY" |
+    ems$incident_type_id == "HERONF" |
+    ems$incident_type_id == "HEORIF"), ] %>% 
+  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+  st_transform(3735)
+
+heroin_ems$floor_date <- floor_date(ymd_hms(heroin_ems$create_time_incident, tz = "EST"), unit = "hour") %>% with_tz(tz = "UTC")
+weather$floor_date <- ymd_hms(weather$DATE, tz = "UTC") %>% floor_date(unit = "hour")
+
+heroin_ems <- left_join(heroin_ems, 
+                        weather %>% 
+                          dplyr::mutate(precipitation = HourlyPrecipitation,
+                                        temperature = HourlyDryBulbTemperature) %>%
+                          dplyr::select(floor_date, temperature, precipitation),
+                        by = c("floor_date")
+)
+
+heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
+heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
+heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
+heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
+heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems15, size = 1, color = "#8FA108") +
+  labs(title="Heroin overdose events 2015", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  labs(title="Heroin overdose events 2017", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems19, size = 1, color = "#5AB60C") +
+  labs(title="Heroin overdose events 2019", subtitle = "Cincinnati, OH") +
+  theme(legend.position = "none") +
+  mapTheme()
 ```
 
 ### Continuous Features 

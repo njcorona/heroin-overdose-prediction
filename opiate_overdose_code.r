@@ -778,7 +778,7 @@ ggplot() +
   geom_sf(data = cincinnati, fill = "darkgray", color = "gray") +
   geom_sf(data = hamilton_streets, color = "gray") +
   geom_sf(data = heroin_ems17[1:1000,], size = 1, color = "#25CB10") +
-  labs(title="Cincinnati and Hamilton County, OH") +
+  labs(title="Cincinnati, OH", subtitle = "And the surrounding Hamilton County, OH") +
   mapTheme()
 
 # EMS calls related to heroin overdose in Cincinnati, over time:
