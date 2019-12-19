@@ -310,7 +310,7 @@ ggplot() +
   geom_sf(data = nalox_sites, size = 3, color = "#FA7800") +
   scale_color_manual(labels = c("Heroin overdose", "Naloxone distribution site")) +
   labs(title="Supply vs. Demand:\nLocation of Heroin Overdoses vs. Naloxone Distribution Sites",
-       subtitle = "Cincinnati, OH") +
+       subtitle = "City of Cincinnati, Hamilton County, OH") +
   mapTheme()
 ```
 
