@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE, results=TRUE, message = FALSE,
 
 # Introduction
 
-The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths have driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
+The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes prescription painkillers, heroin, and the deadly opioid fentanyl, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
 
 The following analysis focuses on southwest Ohio's largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner's office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard [online](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
 
@@ -40,7 +40,7 @@ Data for this analysis were gathered from the following sources. Information spa
 
   - [Open Data Cincinnati](https://data.cincinnati-oh.gov/) 
       - Emergency Medical Services calls
-      - 311 non-emergency service requess 
+      - 311 non-emergency service requests 
       - Crime (2015-2019)
       - Vacant, abandoned and condemned buildings
       - Abandoned vehicles (via zoning code violations data)

@@ -112,6 +112,8 @@ palette_5_blOr <-  c("#1170AA","#5FA2CE","#A3CCE9","#FC7D0B","#C85200")
 # sheriff <- st_read("https://opendata.arcgis.com/datasets/ad2bd178b8624b04ae1878fe598c6001_3.geojson")
 # saveRDS(sheriff, "sheriff.RDS")
 # 
+# zoning <- st_read("https://opendata.arcgis.com/datasets/b43c6f6671d54da298fd6110a3088557_11.geojson")
+# saveRDS(zoning, "zoning.RDS")
 # # Census data
 # # Race from the 2010 US Census
 # racevars <- c(total_pop = "P003001",
@@ -213,6 +215,7 @@ firehouses <- read_rds("firehouses.RDS") %>% st_transform(3735) # Firehouses.
 sheriff <- read_rds("sheriff.RDS") %>% st_transform(3735) # Sheriff stations.
 censusRace <- st_read("censusRace.shp") # race/ethnicity counts and %s by census tract
 acsData <- st_read("acsData.shp") # lots of place-based covariates from American Community Survey (see the code above, commented out, for variables list - based it on the Li et al article in the literature folder on Git, which is a spatial prediction model of heroin overdose in Cincy)
+zoning <- read_rds("zoning.RDS") %>% st_transform(3735)
 
 ######################################################################################
 ##################################
@@ -246,7 +249,6 @@ biz_licenses <- read_csv("Business_Licenses.csv", col_names = T) %>%
   filter(!is.na(LATITUDE)) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
-unique(biz_licenses$LICENSE)
 
 ######################################################################################
 ############################################
@@ -271,6 +273,9 @@ ggplot() + geom_sf(data = hamilton) + geom_sf(data = cincinnati) + geom_sf(data 
 
 # Hamilton County streets - long time to load.
 ggplot() + geom_sf(data = hamilton) + geom_sf(data = hamilton_streets) + mapTheme()
+
+# Hamilton County zoning.
+ggplot() + geom_sf(data = hamilton) + geom_sf(data = zoning) + mapTheme()
 
 # Hamilton County firehouses.
 ggplot() +
