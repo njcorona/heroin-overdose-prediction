@@ -47,7 +47,8 @@ Data for this analysis were gathered from the following sources. Information spa
       - Land use/zoning
       - Neighborhoods (modified to fit US 2010 census tracts)
       - Locations of fire stations, EMS, police stations, hospitals, pharmacies
-      - Business locations
+      - Locations of firearms and weapons dealers
+      - Locations of pool halls, 
       - Female-owned small businesses
   - [Take Charge Ohio](https://takechargeohio.org/map)
       - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
