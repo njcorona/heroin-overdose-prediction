@@ -6,6 +6,7 @@ output:
   html_document#:
     toc: TRUE
     toc_float: true
+    code_folding: hide
     theme: united
   
 ---
@@ -15,6 +16,7 @@ knitr::opts_chunk$set(echo = TRUE, results = TRUE, message = FALSE,
 ```
 
 ```{r load, results="hide"}
+
 ######################################################################################
 ##############################################
 # Load packages, palettes, functions, themes #
@@ -499,6 +501,13 @@ ggplot() +
   coord_sf(xlim = c(-92, -79), ylim = c(36.15, 43.5), expand = FALSE) +
   labs(title = "Cincinnati, OH", subtitle = "In the greater Ohio Valley region") +
   theme(legend.position = "none") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = hamilton, fill = NA, color = "gray") +
+  geom_sf(data = hamilton_streets, color = "gray") +
+  geom_sf(data = cincinnati, fill = "#25CB10", color = "gray", alpha = 0.3) +
+  labs(title="Cincinnati, OH", subtitle = "In Hamilton County, southwest OH") +
   mapTheme()
 ```
 
