@@ -27,6 +27,7 @@ library(here)
 library(tidyverse)
 library(dplyr)
 library(janitor)
+library(gganimate)
 library(maps)
 library(tools)
 library(rnaturalearth)
@@ -521,9 +522,35 @@ ggplot() +
   geom_sf(data = hamilton, fill = NA, color = "gray") +
   geom_sf(data = hamilton_streets, color = "gray") +
   geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
-  geom_sf(data = nalox_sites, size = 3, color = "#FA7800") +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10", alpha = 0.3) +
+  geom_sf(data = nalox_sites, size = 3, color = "#FA7800", alpha = 0.7) +
   scale_color_manual(labels = c("Heroin overdose", "Naloxone distribution site")) +
+  labs(title="Supply vs. demand: Location of city heroin overdoses\nvs. county naloxone distribution sites", subtitle = "City of Cincinnati, Hamilton County, OH", caption = "Note: Data on heroin overdoses are only available for the city of Cincinnati; overdose\nevents in greater Hamilton County are unknown and therefore omitted from the map.") +
+  mapTheme()
+
+# Heroin overdose vs. Naloxone distribution sites in Hamilton County:
+ggplot() +
+  geom_sf(data = hamilton, fill = NA, color = "gray") +
+  geom_sf(data = hamilton_streets, color = "gray") +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, size = 1, aes(color = "Heroin overdose"), alpha = 0.3) +
+  geom_sf(data = nalox_sites, size = 3, aes(color = "Naloxone distributor"), alpha = 0.7) +
+  scale_fill_manual(values = c(
+    "Heroin overdose" = "#25CB10",
+    "Naloxone distributor" = "#FA7800"),
+    name = "Site") +
+    #breaks=c("Heroin overdose", "Naloxone distributor")) +
+  labs(title="Supply vs. demand: Location of city heroin overdoses\nvs. county naloxone distribution sites", subtitle = "City of Cincinnati, Hamilton County, OH", caption = "Note: Data on heroin overdoses are only available for the city of Cincinnati; overdose\nevents in greater Hamilton County are unknown and therefore omitted from the map.") +
+  mapTheme()
+
+ggplot() +
+  geom_sf(data = hamilton, fill = NA, colour = "gray") +
+  geom_sf(data = hamilton_streets, colour = "gray") +
+  geom_sf(data = cincinnati, fill = NA) +
+  geom_sf(data = heroin_ems17, aes(colour = "Heroin overdose"), show.legend = "point", size = 1, alpha = 0.3) +
+  geom_sf(data = nalox_sites, aes(colour = "Naloxone distributor"), show.legend = "point", size = 3, alpha = 0.7) +
+  scale_colour_manual(values = c("Heroin overdose" = "#25CB10",
+    "Naloxone distributor" = "#FA7800"), name = "Site", guide = guide_legend(override.aes = list(linetype = "blank"), shape = 16)) +
   labs(title="Supply vs. demand: Location of city heroin overdoses\nvs. county naloxone distribution sites", subtitle = "City of Cincinnati, Hamilton County, OH", caption = "Note: Data on heroin overdoses are only available for the city of Cincinnati; overdose\nevents in greater Hamilton County are unknown and therefore omitted from the map.") +
   mapTheme()
 ```

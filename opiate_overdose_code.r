@@ -1149,11 +1149,14 @@ ggplot() +
   mapTheme()
 
 # Cincinnati close-up
+ohio_rivers <- st_read("OH_Rivers.shp") %>% st_transform(3735) 
 ggplot() +
   geom_sf(data = hamilton, fill = NA, color = "gray") +
   geom_sf(data = cincinnati, fill = "darkgray", color = "gray") +
   geom_sf(data = hamilton_streets, color = "gray") +
-  geom_sf(data = heroin_ems17[1:1000,], size = 1, color = "#25CB10") +
+  #geom_sf(data = heroin_ems17[1:1000,], size = 1, color = "#25CB10") +
+  geom_sf(data = ohio_rivers, color = "blue") +
+  coord_sf(xlim = c(-84.855827, -84.232950), ylim = c(39.004610, 39.335480), expand = FALSE) +
   labs(title="Cincinnati, OH", subtitle = "And the surrounding Hamilton County, OH") +
   mapTheme()
 
