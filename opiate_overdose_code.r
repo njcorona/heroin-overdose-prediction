@@ -657,27 +657,27 @@ fishnet <-
   st_make_grid(cincinnati, cellsize = 1000) %>%
   st_sf()
 
-ggplot() + # Takes a while to generate.
-  geom_sf(data=cincinnati, fill=NA, colour="black") +
-  geom_sf(data=fishnet, fill=NA, colour="black") +
-  labs(title = "Cincinnati and the fishnet") +
-  mapTheme()
+# ggplot() + # Takes a while to generate.
+#   geom_sf(data=cincinnati, fill=NA, colour="black") +
+#   geom_sf(data=fishnet, fill=NA, colour="black") +
+#   labs(title = "Cincinnati and the fishnet") +
+#   mapTheme()
 
 fishnet <- 
   fishnet[cincinnati,] %>%
   mutate(uniqueID = rownames(.)) %>%
   dplyr::select(uniqueID)
 
-ggplot() +
-  geom_sf(data=fishnet) +
-  labs(title = "Fishnet in Cincinnati") +
-  mapTheme()
+# ggplot() +
+#   geom_sf(data=fishnet) +
+#   labs(title = "Fishnet in Cincinnati") +
+#   mapTheme()
 
-ggplot() + 
-  geom_sf(data = cincinnati) +
-  geom_sf(data = heroin_ems18, colour="red", size=0.05, show.legend = "point") +
-  labs(title= "Heroin-related EMS responses, Cincinnati, 2018") +
-  mapTheme()
+# ggplot() + 
+#   geom_sf(data = cincinnati) +
+#   geom_sf(data = heroin_ems18, colour="red", size=0.05, show.legend = "point") +
+#   labs(title= "Heroin-related EMS responses, Cincinnati, 2018") +
+#   mapTheme()
 
 heroin_net <- 
   heroin_ems18 %>% 
@@ -688,11 +688,11 @@ heroin_net <-
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
 
-ggplot() +
-  geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
-  scale_fill_viridis() +
-  labs(title = "Count of Heroin Responses for the fishnet") +
-  mapTheme()
+# ggplot() +
+#   geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
+#   scale_fill_viridis() +
+#   labs(title = "Count of Heroin Responses for the fishnet") +
+#   mapTheme()
 
 # Euclidean distance 
 UTpoint <-
@@ -898,19 +898,20 @@ for(i in vars){
 do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Heroin Responses"))
 
 # Distance to significant heroin hotspots
-final_net <-
-  final_net %>% 
-  mutate(heroin.isSig = ifelse(localmoran(final_net$countHeroinResponses, 
-                                            final_net.weights)[,5] <= 0.0000001, 1, 0)) %>%
-  mutate(heroin.isSig.dist = nn_function(st_coordinates(st_centroid(final_net)),
-                                           st_coordinates(st_centroid(
-                                             filter(final_net, heroin.isSig == 1))), 1 ))
-
-ggplot() + 
-  geom_sf(data = final_net, aes(fill = heroin.isSig.dist)) +
-  scale_fill_viridis() +
-  labs(title = "Distance to highly significant heroin response hotspots") +
-  mapTheme()
+# OMITTED FROM MARKDOWN 
+# final_net <-
+#   final_net %>% 
+#   mutate(heroin.isSig = ifelse(localmoran(final_net$countHeroinResponses, 
+#                                             final_net.weights)[,5] <= 0.0000001, 1, 0)) %>%
+#   mutate(heroin.isSig.dist = nn_function(st_coordinates(st_centroid(final_net)),
+#                                            st_coordinates(st_centroid(
+#                                              filter(final_net, heroin.isSig == 1))), 1 ))
+# 
+# ggplot() + 
+#   geom_sf(data = final_net, aes(fill = heroin.isSig.dist)) +
+#   scale_fill_viridis() +
+#   labs(title = "Distance to highly significant heroin response hotspots") +
+#   mapTheme()
 
 # The next step is to build some faceted correlation plots.  The relevant code is under 
 # "Both features for a given risk factor cannot be included in the model because of co-linearity. This plot and the correlation coefficients help us understand which type of feature for a given risk factor should be included."
