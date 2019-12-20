@@ -1118,7 +1118,7 @@ ggplot(final_net, aes(countHeroinResponses)) +
 # TODO: Update with desired regression variables.
 # TODO: Names must match the names in final_net.
 column_names <- colnames(final_net)
-reg.vars <- c("Abandoned Cars", "vacant_buildings.nn", "funTimes.nn", "SNA_NAME", "zone_type")
+reg.vars <- c("Abandoned Cars", "vacant_buildings.nn", "fun_times.nn", "SNA_NAME", "zone_type")
 
 crossValidate <- function(dataset, id, dependentVariable, indVariables) {
   
@@ -1173,32 +1173,32 @@ reg.summary <-
            Regression = "Spatial LOGO-CV")) %>%
   st_sf() 
 
-# grid.arrange(
-#   reg.summary %>%
-#     ggplot() +
-#     geom_sf(aes(fill = Prediction)) +
-#     facet_wrap(~Regression) +
-#     scale_fill_viridis() +
-#     labs(title = "Predicted heroin responses by Regression") +
-#     mapTheme() + theme(legend.position="bottom"),
-#   
-#   filter(reg.summary, Regression == "Random k-fold CV") %>%
-#     ggplot() +
-#     geom_sf(aes(fill = countHeroinResponses)) +
-#     scale_fill_viridis() +
-#     labs(title = "Observed heroin responses\n") +
-#     mapTheme() + theme(legend.position="bottom"),
-#   
-#   ncol = 2
-#   )
-# 
-# filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Error)) +
-#   facet_wrap(~Regression) +
-#   scale_fill_viridis() +
-#   labs(title = "Heroin response errors by Regression") +
-#   mapTheme()
+grid.arrange(
+  reg.summary %>%
+    ggplot() +
+    geom_sf(aes(fill = Prediction)) +
+    facet_wrap(~Regression) +
+    scale_fill_viridis() +
+    labs(title = "Predicted heroin responses by Regression") +
+    mapTheme() + theme(legend.position="bottom"),
+
+  filter(reg.summary, Regression == "Random k-fold CV") %>%
+    ggplot() +
+    geom_sf(aes(fill = countHeroinResponses)) +
+    scale_fill_viridis() +
+    labs(title = "Observed heroin responses\n") +
+    mapTheme() + theme(legend.position="bottom"),
+
+  ncol = 2
+  )
+
+filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
+  ggplot() +
+  geom_sf(aes(fill = Error)) +
+  facet_wrap(~Regression) +
+  scale_fill_viridis() +
+  labs(title = "Heroin response errors by Regression") +
+  mapTheme()
 
 ```
 
@@ -1207,28 +1207,28 @@ reg.summary <-
 ```{r acc}
 
   # Kable/Table of MAE.
-  # st_set_geometry(reg.summary, NULL) %>%
-  # group_by(Regression) %>% 
-  # summarize(MAE = round(mean(abs(Prediction - countHeroinResponses), na.rm = T),2),
-  #           SD_MAE = round(sd(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>% 
-  # kable(caption = "MAE by regression") %>%
-  # kable_styling("striped", full_width = F) %>%
-  # row_spec(1, color = "black", background = "#FDE725FF")
-  # row_spec(2, color = "black", background = "#FDE725FF")
-  
+  st_set_geometry(reg.summary, NULL) %>%
+  group_by(Regression) %>%
+  summarize(MAE = round(mean(abs(Prediction - countHeroinResponses), na.rm = T),2),
+            SD_MAE = round(sd(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>%
+  kable(caption = "MAE by regression") %>%
+  kable_styling("striped", full_width = F) %>%
+  row_spec(1, color = "black", background = "#FDE725FF") %>%
+  row_spec(2, color = "black", background = "#FDE725FF")
+
   # Predicted and observed heroin responses by observed heroin responses decile
-  # st_set_geometry(reg.summary, NULL) %>%
-  #   group_by(Regression) %>%
-  #   mutate(heroinResponse_Decile = ntile(countHeroinResponses, 10)) %>%
-  #   group_by(Regression, burglary_Decile) %>%
-  #   summarize(meanObserved = mean(countHeroinResponses, na.rm=T),
-  #             meanPrediction = mean(Prediction, na.rm=T)) %>%
-  #   gather(Variable, Value, -Regression, -heroinResponse_Decile) %>%          
-  #   ggplot(aes(heroinResponse_Decile, Value, shape = Variable)) +
-  #   geom_point(size = 2) + geom_path(aes(group = heroinResponse_Decile), colour = "black") +
-  #   scale_shape_manual(values = c(2, 17)) +
-  #   facet_wrap(~Regression) + xlim(0,10) +
-  #   labs(title = "Predicted and observed heroin responses by observed heroin responses decile")
+  st_set_geometry(reg.summary, NULL) %>%
+    group_by(Regression) %>%
+    mutate(heroinResponse_Decile = ntile(countHeroinResponses, 10)) %>%
+    group_by(Regression, heroinResponse_Decile) %>%
+    summarize(meanObserved = mean(countHeroinResponses, na.rm=T),
+              meanPrediction = mean(Prediction, na.rm=T)) %>%
+    gather(Variable, Value, -Regression, -heroinResponse_Decile) %>%
+    ggplot(aes(heroinResponse_Decile, Value, shape = Variable)) +
+    geom_point(size = 2) + geom_path(aes(group = heroinResponse_Decile), colour = "black") +
+    scale_shape_manual(values = c(2, 17)) +
+    facet_wrap(~Regression) + xlim(0,10) +
+    labs(title = "Predicted and observed heroin responses by observed heroin responses decile")
 
 ```
 
@@ -1325,29 +1325,29 @@ final_reg <-
     dplyr::select(label,Risk_Category, heroinCount)
   
   # Geographical comparison
-  # rbind(heroin_KDE_sf, heroin_risk_sf) %>%
-  #   gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
-  #   ggplot() +
-  #   geom_sf(aes(fill = Risk_Category), colour = NA) +
-  #   geom_sf(data = sample_n(heroin_train, 1500), size = .1, colour = "black") +
-  #   facet_wrap(~label, ) +
-  #   scale_fill_viridis(discrete = TRUE) +
-  #   labs(title="Comparison of Kernel Density and Risk Predictions",
-  #        subtitle="Relative to test set points (in black)") +
-  #   mapTheme()
-  
+  rbind(heroin_KDE_sf, heroin_risk_sf) %>%
+    gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
+    ggplot() +
+    geom_sf(aes(fill = Risk_Category), colour = NA) +
+    geom_sf(data = sample_n(heroin_train, 1500), size = .1, colour = "black") +
+    facet_wrap(~label, ) +
+    scale_fill_viridis(discrete = TRUE) +
+    labs(title="Comparison of Kernel Density and Risk Predictions",
+         subtitle="Relative to test set points (in black)") +
+    mapTheme()
+
   # Bar plot comparison
-  # rbind(heroin_KDE_sf, heroin_risk_sf) %>%
-  #   st_set_geometry(NULL) %>%
-  #   gather(Variable, Value, -label, -Risk_Category) %>%
-  #   group_by(label, Risk_Category) %>%
-  #   summarize(countHeroinResponses = sum(Value)) %>%
-  #   ungroup() %>%
-  #   group_by(label) %>%
-  #   mutate(Rate_of_test_set_crimes = countHeroinResponses / sum(countHeroinResponses)) %>%
-  #   ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
-  #   geom_bar(aes(fill=label), position="dodge", stat="identity") +
-  #   scale_fill_viridis(discrete = TRUE)
+  rbind(heroin_KDE_sf, heroin_risk_sf) %>%
+    st_set_geometry(NULL) %>%
+    gather(Variable, Value, -label, -Risk_Category) %>%
+    group_by(label, Risk_Category) %>%
+    summarize(countHeroinResponses = sum(Value)) %>%
+    ungroup() %>%
+    group_by(label) %>%
+    mutate(Rate_of_test_set_crimes = countHeroinResponses / sum(countHeroinResponses)) %>%
+    ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
+    geom_bar(aes(fill=label), position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = TRUE)
 
 ```
 
