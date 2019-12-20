@@ -196,6 +196,7 @@ nn_function <- function(measureFrom,measureTo,k) {
 #          prop_males = round(total_males/total_pop,4),
 #          prop_males_18to24 = round((males_18_19+males_20+males_21+males_22_24)/total_males,4),
 #          prop_males_25to34 = round((males_25_29+males_30_34)/total_males,4),
+#          prop_males_25to44 = round((males_25_29+males_30_34+males_35_39+males_40_44)/total_males,4),
 #          prop_males_35to49 = round((males_35_39+males_40_44+males_45_49)/total_males,4),
 #          prop_males_50to64 = round((males_50_54+males_55_59+males_60_61+males_62_64)/total_males,4),
 #          prop_males_65up = round((males_65_66+males_67_69+males_70_74+males_75_79+males_85plus)/total_males,4),
@@ -279,15 +280,50 @@ ffood <- st_read("Fast food Cincinnati.kml") %>% st_set_crs(4326) %>%
 #########################################
 ######################################################################################
 
-# drugs_cops
-drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
+# Outcome of interest: heroin overdose
+# Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage, used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries. Nick also went through manually to confirm that the data dictionary doesn't miss any heroin-related incidents.
+ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
+ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
+ems15 <- ems[which(ems$year == "2015"),]
+ems16 <- ems[which(ems$year == "2016"),]
+ems17 <- ems[which(ems$year == "2017"),]
+ems18 <- ems[which(ems$year == "2018"),]
+ems19 <- ems[which(ems$year == "2019"),]
+
+heroin_ems <- ems[which(
+  str_detect(ems$disposition_text, "NAR") |
+    str_detect(ems$disposition_text, "NART") |
+    ems$incident_type_id == "HEROINF - FIRE ONLY" |
+    ems$incident_type_id == "HEROIN-COMBINED" |
+    ems$incident_type_id == "HEROINF-FIRE ONLY" |
+    ems$incident_type_id == "HERONF" |
+    ems$incident_type_id == "HEORIF"), ] %>% 
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
-# heroin_cops
-heroin_cops <- heroin_cops[!is.na(heroin_cops$latitude_x), ] %>%
-  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
-  st_transform(3735)
+heroin_ems$floor_date <- floor_date(ymd_hms(heroin_ems$create_time_incident, tz = "EST"), unit = "hour") %>% with_tz(tz = "UTC")
+heroin_ems <- left_join(heroin_ems, 
+                        weather %>% 
+                          dplyr::mutate(precipitation = HourlyPrecipitation,
+                                        temperature = HourlyDryBulbTemperature) %>%
+                          dplyr::select(floor_date, temperature, precipitation),
+                        by = c("floor_date")
+)
+heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
+heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
+heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
+heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
+heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
+
+# # drugs_cops
+# drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
+#   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+#   st_transform(3735)
+# 
+# # heroin_cops
+# heroin_cops <- heroin_cops[!is.na(heroin_cops$latitude_x), ] %>%
+#   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
+#   st_transform(3735)
 
 # crimes
 crimes <- crimes[!is.na(crimes$latitude_x), ] %>%
@@ -319,19 +355,33 @@ blight_311 <- c311 %>% filter(grepl("Unsanitary", service_name) == TRUE |
                                           grepl("Fleas", service_name) == TRUE | 
                                           grepl("Bed Bugs", service_name) == TRUE) %>%
   filter(requested_date >= as.Date("2015-01-01"))
+pest_311 <- c311 %>% filter(grepl("Roaches", service_name) == TRUE | 
+                              grepl("roaches", service_name) == TRUE | 
+                              grepl("Mice", service_name) == TRUE |
+                              grepl("mice", service_name) == TRUE |
+                              grepl("Rats", service_name) == TRUE | 
+                              grepl("rats", service_name) == TRUE | 
+                              grepl("Rodents", service_name) == TRUE |
+                              grepl("rodents", service_name) == TRUE |
+                              grepl("Fleas", service_name) == TRUE | 
+                              grepl("Bed Bugs", service_name) == TRUE) %>%
+  filter(requested_date >= as.Date("2015-01-01"))
 
-# code
+# Zoning violation codes
 code <- code %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
 
 abandoned_vehicles <- code %>% dplyr::filter(comp_type_desc == "Abandoned Vehicle Code Enforcement")
+abandoned_vehicles <- abandoned_vehicles[cincinnati,]
+
 complainedTrash <- code %>% filter(comp_type_desc == "Trash/Litter/Tall Grass Complaint")
+complainedTrash <- complainedTrash[cincinnati,]
 
 # Firearms and weapons dealers
 firearms <- biz_licenses %>% filter(LICENSE == "DANGEROUS WEAPONS" | 
                                     LICENSE == "RETAIL DEALER IN FIREARMS AND AMMUNITION")
-# unique(firearms$LICENSE)
+firearms <- firearms[cincinnati,]
 
 # Cabaret, pool halls and other 'special business licenses'
 funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" | 
@@ -341,6 +391,7 @@ funTimes <- biz_licenses %>% filter(LICENSE == "BILLIARDS AND POOL TABLE" |
                                       LICENSE == "DANCE HALL" |
                                       LICENSE == "SEXUALLY ORIENTED BUSINESS" |
                                       LICENSE == "MASSAGE ESTABLISHMENT")
+funTimes <- funTimes[cincinnati,]
 
 # Point location of Union Terminal, main train station in south Cincinnati
 lat <- c(-84.53228)
@@ -350,12 +401,69 @@ unionTerminal <- unionTerminal %>% st_as_sf(coords = c("long", "lat"), crs = 432
                                             agr = "constant") %>%
   st_transform(3735)
 
-# Crime 
-# Assault
-crime_assault <- crimes %>% filter(grepl("ASSAULT", offense) == TRUE)
-# Murder
+# Fast food
+ffood <- ffood[cincinnati,]
+
+# Assault crimes
+crime_assault <- crimes %>% filter(grepl("ASSAULT", offense) == TRUE) %>%
+  filter(date_reported >= as.Date("2015-01-01"))
+crime_assault <- crime_assault[cincinnati,]
+
+# Murder crimes
 crime_murder <- crimes %>% filter(grepl("MURDER", offense) == TRUE | 
-                                    grepl("HOMICIDE", offense) == TRUE)
+                                    grepl("HOMICIDE", offense) == TRUE) %>%
+  filter(date_reported >= as.Date("2015-01-01"))
+crime_murder <- crime_murder[cincinnati,]
+
+# Weather
+weather$floor_date <- ymd_hms(weather$DATE, tz = "UTC") %>% floor_date(unit = "hour")
+
+# Land use
+zoning <- zoning %>% mutate(zone_type =
+  if_else(grepl("SF-", ZONE_TYPE) == TRUE, "Single_Family",
+  if_else(grepl("RM", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
+  if_else(grepl("RF", ZONE_TYPE) == TRUE, "Riverfront",
+  if_else(grepl("RM-0.7", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
+  if_else(grepl("OL", ZONE_TYPE) == TRUE, "Office",
+  if_else(grepl("OG", ZONE_TYPE) == TRUE, "Office",
+  if_else(grepl("C", ZONE_TYPE) == TRUE, "Commercial",
+  if_else(grepl("ML", ZONE_TYPE) == TRUE, "Manufacturing",
+  if_else(grepl("MA", ZONE_TYPE) == TRUE, "Manufacturing",
+  if_else(grepl("MG", ZONE_TYPE) == TRUE, "Manufacturing",
+  if_else(grepl("ME", ZONE_TYPE) == TRUE, "Manufacturing",
+  if_else(grepl("PD", ZONE_TYPE) == TRUE, "Planned_Development",
+  if_else(grepl("PR", ZONE_TYPE) == TRUE, "Park_Or_Recreational",
+  if_else(grepl("UM", ZONE_TYPE) == TRUE, "Urban",
+  if_else(grepl("DD", ZONE_TYPE) == TRUE, "Downtown_District",
+  if_else(grepl("IR", ZONE_TYPE) == TRUE, "Institutional_Residential",
+  if_else(grepl("T4", ZONE_TYPE) == TRUE, "Urban",
+  if_else(grepl("T5", ZONE_TYPE) == TRUE, "Urban",
+  if_else(grepl("T3", ZONE_TYPE) == TRUE, "Suburban",
+  NA_character_))))))))))))))))))))
+
+zoning <- zoning %>% mutate(zone_collapsed = 
+                              if_else(zone_type == "Single_Family", "Residential", 
+                                      if_else(zone_type == "Residential_MultiFamOrMixed", "Residential", 
+                                              if_else(zone_type == "Residential_MultiFamOrMixed", "Residential", 
+                                                      if_else(zone_type == "Institutional_Residential", "Residential",
+                                                              if_else(zone_type == "Office", "Commercial", 
+                                                                      if_else(zone_type == "Commercial", "Commercial", 
+                                                                              if_else(zone_type == "Downtown_District", "Urban", 
+                                                                                      if_else(zone_type == "Urban", "Urban", 
+                                                                                              if_else(zone_type == "Manufacturing", "Manufacturing", 
+                                                                                                      if_else(zone_type == "Park_Or_Recreational", "Park and Riverfront", 
+                                                                                                              if_else(zone_type == "Riverfront", "Park and Riverfront", "Other"))))))))))))
+zoning$zone_collapsed[is.na(zoning$zone_collapsed)] = "Other"
+
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = dplyr::select(zoning, zone_collapsed, geometry), (aes(fill = zone_collapsed)))
+
+zoning <- zoning %>% mutate(potential_drug_use_sites = if_else(zone_collapsed == "Manufacturing", "Manufacturing, Urban, and Recreational Land Use",
+                                                                 if_else(zone_collapsed == "Park and Riverfront", "Manufacturing, Urban, and Recreational Land Use",
+                                                                         if_else(zone_collapsed == "Urban", "Manufacturing, Urban, and Recreational Land Use", "Other Land Use"))))
+
+# ggplot() + geom_sf(data = cincinnati) + geom_sf(data = dplyr::select(zoning, potential_drug_use_sites, geometry), (aes(fill = potential_drug_use_sites)))
+
+zones_likely_drug_sale <- zoning %>% filter(potential_drug_use_sites == "Manufacturing, Urban, and Recreational Land Use")
 ```
 
 # Introduction
@@ -400,7 +508,7 @@ ggplot() +
 
 We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).
 
-Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing) or retail common to low-income neighborhoods (fast food restaurants, [insert example]), and some crime types [insert examples]. The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations. 
+Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing or parks) or retail common to low-income or industrial neighborhoods (fast food restaurants, pool halls, adult entertainment venues), and also some crime types (assault and violent crime). The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations. 
 
 # Data
 
@@ -414,12 +522,11 @@ Data for this analysis were gathered from the following sources. Information spa
       - Crime
       - Vacant, abandoned and condemned buildings
       - Abandoned vehicles (via zoning code violations data)
-      - Land use/zoning
+      - Land use/zoning (residential, commercial, industrial)
       - Neighborhoods (modified to fit US 2010 census tracts)
       - Locations of fire stations, EMS, police stations, hospitals, pharmacies
       - Locations of firearms and weapons dealers
       - Locations of pool halls, dance halls, massage parlors & sundry "special business license" locations
-      - Female-owned small businesses
   - **[Take Charge Ohio](https://takechargeohio.org/map)**
       - Naloxone distribution sites (pharmacies, hospitals and clinics) (2019)
   - **[United States Census](https://factfinder.census.gov/faces/nav/jsf/pages/index.xhtml)**
@@ -447,15 +554,6 @@ This analysis focuses on heroin overdoses specifically, rather than other opioid
 Data from Cincinnati mirror this statewide trend. The following maps plot the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019 based on EMS call data. 
 
 ```{r exploratory}
-# # Outcome of interest: heroin overdose 
-# ems <- ems[which(!is.na(ems$latitude_x)), ] # TODO: see whether NAs are distributed spatially or across time.
-# ems$year <- str_sub(ems$create_time_incident, start = 1, end = 4)
-# ems15 <- ems[which(ems$year == "2015"),]
-# ems16 <- ems[which(ems$year == "2016"),]
-# ems17 <- ems[which(ems$year == "2017"),]
-# ems18 <- ems[which(ems$year == "2018"),]
-# ems19 <- ems[which(ems$year == "2019"),]
-# 
 # # These years only have 1-17 records per year.
 # crimes <- crimes[which(str_sub(crimes$date_reported, start = 1, end = 4) != 1991 &
 #                          str_sub(crimes$date_reported, start = 1, end = 4) != 2003 &
@@ -468,37 +566,6 @@ Data from Cincinnati mirror this statewide trend. The following maps plot the co
 # code <- code[which(str_sub(code$entered_date, start = 1, end = 4) != 1999 &
 #                      str_sub(code$entered_date, start = 1, end = 4) != 2000
 # ),]
-
-# Heroin-related portions of ems dataset.  Note that this selects from disposition_text for narcan (naloxone) usage,
-# used to combat fatal heroin overdoses, in addition to incident_type_ids from the data dictionaries.
-# Nick also went through manually to confirm that the data dictionary doesn't miss any heroin-related incidents.
-heroin_ems <- ems[which(
-  str_detect(ems$disposition_text, "NAR") |
-    str_detect(ems$disposition_text, "NART") |
-    ems$incident_type_id == "HEROINF - FIRE ONLY" |
-    ems$incident_type_id == "HEROIN-COMBINED" |
-    ems$incident_type_id == "HEROINF-FIRE ONLY" |
-    ems$incident_type_id == "HERONF" |
-    ems$incident_type_id == "HEORIF"), ] %>% 
-  st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
-  st_transform(3735)
-
-heroin_ems$floor_date <- floor_date(ymd_hms(heroin_ems$create_time_incident, tz = "EST"), unit = "hour") %>% with_tz(tz = "UTC")
-weather$floor_date <- ymd_hms(weather$DATE, tz = "UTC") %>% floor_date(unit = "hour")
-
-heroin_ems <- left_join(heroin_ems, 
-                        weather %>% 
-                          dplyr::mutate(precipitation = HourlyPrecipitation,
-                                        temperature = HourlyDryBulbTemperature) %>%
-                          dplyr::select(floor_date, temperature, precipitation),
-                        by = c("floor_date")
-)
-
-heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
-heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
-heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
-heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
-heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
 
 ggplot() +
   geom_sf(data = cincinnati, fill = NA) +
@@ -524,47 +591,97 @@ ggplot() +
 
 ### Features associated with heroin overdose 
 
-The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, and crime prevalence are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati specifically.
+The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space; followed  in Cincinnati specifically.
 
 ```{r risk_small_multiples}
-# - Vacant, abandoned and condemned buildings
-# - 311 non-emergency service requests 
-# - Crime (2015-2019)
-# - Abandoned vehicles (via zoning code violations data)
-# - Land use/zoning
-# - Neighborhoods (modified to fit US 2010 census tracts)
+# TODO: Include any of the following?
 # - Locations of fire stations, EMS, police stations, hospitals, pharmacies
-# - Locations of firearms and weapons dealers
-# - Locations of pool halls, 
-# - Female-owned small businesses
-# - census
-# - ACS
 # - temperature
 # - precipitation
-# - fast food
-# 
-# ggplot() +
-#   geom_sf(data=cincinnati) +
-#   geom_sf(data = rbind(abandoned_vehicles %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Abandoned Cars"),
-#                        funTimes %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Special Business License"), 
-#                        firearms %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Firearms Vendors"),
-#                        vacant_buildings %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Vacant, Condemned Bldgs"), 
-#                        nalox_sites %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Nalox Sites")),
-#           size = .1) +
-#   facet_wrap(~Legend, ncol = 2) +
-#   labs(title = "Risk Factors") +  
-#   mapTheme()
-# 
+ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data = rbind(vacant_buildings %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Vacant, Condemned Bldgs"),
+                       abandoned_vehicles %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Abandoned Cars"),
+                       complainedTrash %>% dplyr::select() %>%
+                         st_transform((st_crs(fishnet))) %>%
+                         mutate(Legend = "Trash Complaints"),
+                       pest_311 %>% dplyr::select() %>%
+                         st_transform((st_crs(fishnet))) %>%
+                         mutate(Legend = "Pest Complaints"),
+                       # graffiti %>% dplyr::select() %>%
+                       #   st_transform((st_crs(fishnet))) %>%
+                       #   mutate(Legend = "Graffiti Complaints"),
+                       crime_assault %>% dplyr::select() %>%
+                         st_transform((st_crs(fishnet))) %>%
+                         mutate(Legend = "Assault Crimes"),
+                       crime_murder %>% dplyr::select() %>%
+                         st_transform((st_crs(fishnet))) %>%
+                         mutate(Legend = "Murder/Homicide"),
+                       zones_likely_drug_sale %>% dplyr::select() %>%
+                         st_transform((st_crs(fishnet))) %>%
+                         mutate(Legend = "Manufacturing and Recreational Land Use"),
+                       funTimes %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Adult Entertainment"),
+                       firearms %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Firearms Vendors"),
+                       ffood %>% dplyr::select() %>%
+                         st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Fast Food Restaurants")),
+          size = .1) +
+  facet_wrap(~Legend, ncol = 2) +
+  labs(title = "Risk Factors") +
+  mapTheme() + 
+    theme(strip.text = element_text(size = 5))
+
+# Alternative
+expl_vac <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=vacant_buildings %>% dplyr::select()) + labs(title = "Vacant, Condemned Bldgs") + mapTheme()
+
+expl_av <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=abandoned_vehicles %>% dplyr::select()) + labs(title = "Abandoned Vehicles") + mapTheme()
+
+expl_ct <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=complainedTrash %>% dplyr::select()) + labs(title = "Trash Complaints") + mapTheme()
+
+expl_pc <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=pest_311 %>% dplyr::select()) + labs(title = "Pest Complaints") + mapTheme()
+
+expl_a <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=crime_assault %>% dplyr::select()) + labs(title = "Assaults") + mapTheme()
+
+expl_mh <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=crime_murder %>% dplyr::select()) + labs(title = "Murders/Homicides") + mapTheme()
+
+expl_mrlu <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=zones_likely_drug_sale %>% dplyr::select()) + labs(title = "Manufacturing/Recreational Land Use") + mapTheme()
+
+expl_ae <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=funTimes %>% dplyr::select()) + labs(title = "Adult Entertainment") + mapTheme()
+
+expl_fv <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=firearms %>% dplyr::select()) + labs(title = "Firearms Vendors") + mapTheme()
+
+expl_ff <- ggplot() +
+  geom_sf(data=cincinnati) +
+  geom_sf(data=ffood %>% dplyr::select()) + labs(title = "Fast Food Restaurants") + mapTheme()
+
+grid.arrange(expl_vac, expl_av, expl_ct, expl_pc, expl_a, expl_mh, expl_mrlu, expl_ae, expl_fv, expl_ff, ncol=2)
+
 # ggplot() +
 #   geom_sf(data=cincinnati) +
 #   geom_sf(data = rbind(affHousing,abandonBuildings,sanitation,industrial_zones,overdose,
@@ -576,14 +693,66 @@ The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that severa
 #   theme(strip.text = element_text(size = 5))
 ```
 
-The maps suggest that only some factors will be useful in predicting heroin overdose risk in Cincinnati, namely, X, Y, and Z, as they demonstrate spatial clustering similar to (or the inverse of) Cincinnati's historic heroin overdose sites. 
+The maps suggest that most but not all of these factors demonstrate spatial clustering similar to Cincinnati's heroin overdose sites and may therefore be useful in predicting overdose risk.
 
-The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about abandoned trash and from parking violation data that suggest a car has been abandoned, as well as the locations of firearms dealers. Although abandoned vehicles can serve as drug use sites, they appear to be too prevalent to be of use here, while firearms and weapons retail are too sparse.
+The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about trash and pests as well as the locations of firearms dealers. Trash and pest complaints are too prevalent to be of use here, while firearms and weapons retail are too sparse.
+
+Data from the U.S. Census and American Communities Survey were also explored as potential predictors of heroin overdose. The proportion of various demographic groups by census tract are displayed below.
+
+```{r census_acs_exploratory}
+censusRace_props <- censusRace %>% dplyr::filter(variable == "prop_white" | 
+                                                   variable == "prop_black")
+censusRace_props <- censusRace_props[cincinnati,]
+
+censusRace_props %>% ggplot(aes(fill = value)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+acsData_props <- acsData %>% dplyr::filter(variable == "prop_poverty" |
+                                             variable == "prop_bach_or_higher" | 
+                                             variable == "prop_males_25to44")
+acsData_props <- acsData_props[cincinnati, ]
+acsData_props %>% ggplot(aes(fill = estimate)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+
+# acsData <- acsData %>% 
+#   group_by(variable) %>% 
+#   mutate(grouped_id = row_number())
+# acsYoungMen <- acsData %>% spread(key = "variable", value = "estimate") %>% 
+#   dplyr::select(-grouped_id)
+# acsYoungMen <- acsYoungMen %>% mutate(
+#   males_25to44 = males_25_29+males_30_34+males_35_39+males_40_44) %>%
+#   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, estimate, geometry) %>%
+#   dplyr::filter(variable == "males_25to44")
+# acsYoungMen <- acsYoungMen[cincinnati, ]
+# acsYoungMen %>% ggplot(aes(fill = estimate)) +
+#   facet_wrap(~variable) +
+#   geom_sf(color = NA) +
+#   coord_sf(crs = 26915) + 
+#   scale_fill_viridis_c() + mapTheme()
+# unique(acsData$variable)
+
+acsMedHome <- acsData %>% dplyr::filter(variable == "median_home_value")
+acsMedHome <- acsMedHome[cincinnati, ]
+acsMedHome %>% ggplot(aes(fill = estimate)) +
+  facet_wrap(~variable) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + mapTheme()
+```
+
+Heroin use in Ohio is most prevalent among White, non-Hispanic males aged 25-44[^16], and it does appear that the proportion of young- and middle-aged White men in Cincinnati tracts demonstrates a roughly similar distribution as overdose events, with some exceptions. Poverty and low rates of college education also appear to be correlated with overdose.
 
 These conclusions can be verified by examining the correlation between these features (and different methods of engineering a feature) and the outcome of interest, as below. Firearms dealers are omitted because there are so few data.
 
 ```{r correlations}
-
+#TODO: correlation plot
 ```
 
 # Spatial/time process 
@@ -593,7 +762,6 @@ As can be seen, the temporal process is similar to a negative quadratic function
 To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at hyperlocal geographies. 
 
 ```{r spacetime}
-
 # Make a grid with 1000x1000ft grid cells.
 fishnet <- 
   st_make_grid(cincinnati, cellsize = 1000) %>%
@@ -605,17 +773,16 @@ fishnet <-
   mutate(uniqueID = rownames(.)) %>%
   dplyr::select(uniqueID)
 
-# # Map overlay of fishnet on Cincinnati
-# ggplot() +
-#   geom_sf(data=cincinnati) +
-#   labs(title = "Cincinnati, OH") +
-#   mapTheme()
-# 
-# # Map overlay of fishnet on Cincinnati
-# ggplot() +
-#   geom_sf(data=fishnet) +
-#   labs(title = "Fishnet of Cincinnati") +
-#   mapTheme()
+# Maps of Cincinnati and fishnet overlay
+cincy <- ggplot() +
+  geom_sf(data=cincinnati) +
+  labs(title = "Cincinnati, OH") +
+  mapTheme()
+cincy_net <- ggplot() +
+  geom_sf(data=fishnet) +
+  labs(title = "Fishnet of Cincinnati, OH") +
+  mapTheme()
+grid.arrange(cincy, cincy_net, ncol=2)
 
 ```
 
@@ -765,30 +932,6 @@ for(i in vars){
 # Prep final fishnet for analysis.
 final_net <-
   left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
-
-# Clean up zoning a bit.
-# TODO: Move this to a more appropriate part of the markdown.
-zoning <- zoning %>% mutate(zone_type =
-  if_else(grepl("SF-", ZONE_TYPE) == TRUE, "Single_Family",
-  if_else(grepl("RM", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
-  if_else(grepl("RF", ZONE_TYPE) == TRUE, "Riverfront",
-  if_else(grepl("RM-0.7", ZONE_TYPE) == TRUE, "Residential_MultiFamOrMixed",
-  if_else(grepl("OL", ZONE_TYPE) == TRUE, "Office",
-  if_else(grepl("OG", ZONE_TYPE) == TRUE, "Office",
-  if_else(grepl("C", ZONE_TYPE) == TRUE, "Commercial",
-  if_else(grepl("ML", ZONE_TYPE) == TRUE, "Manufacturing",
-  if_else(grepl("MA", ZONE_TYPE) == TRUE, "Manufacturing",
-  if_else(grepl("MG", ZONE_TYPE) == TRUE, "Manufacturing",
-  if_else(grepl("ME", ZONE_TYPE) == TRUE, "Manufacturing",
-  if_else(grepl("PD", ZONE_TYPE) == TRUE, "Planned_Development",
-  if_else(grepl("PR", ZONE_TYPE) == TRUE, "Park_Or_Recreational",
-  if_else(grepl("UM", ZONE_TYPE) == TRUE, "Urban",
-  if_else(grepl("DD", ZONE_TYPE) == TRUE, "Downtown_District",
-  if_else(grepl("IR", ZONE_TYPE) == TRUE, "Institutional_Residential",
-  if_else(grepl("T4", ZONE_TYPE) == TRUE, "Urban",
-  if_else(grepl("T5", ZONE_TYPE) == TRUE, "Urban",
-  if_else(grepl("T3", ZONE_TYPE) == TRUE, "Suburban",
-  NA_character_))))))))))))))))))))
 
 # Adding overlapping IDs, like neighborhood or zoning.
 # TODO: Add any metrics we want to here.
