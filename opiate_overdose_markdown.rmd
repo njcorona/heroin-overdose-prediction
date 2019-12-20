@@ -306,7 +306,7 @@ heroin_ems <- ems[which(
     ems$incident_type_id == "HEORIF"), ] %>% 
   st_as_sf(coords = c("longitude_x", "latitude_x"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
-
+weather$floor_date <- ymd_hms(weather$DATE, tz = "UTC") %>% floor_date(unit = "hour")
 heroin_ems$floor_date <- floor_date(ymd_hms(heroin_ems$create_time_incident, tz = "EST"), unit = "hour") %>% with_tz(tz = "UTC")
 heroin_ems <- left_join(heroin_ems, 
                         weather %>% 
@@ -320,6 +320,9 @@ heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
 heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
 heroin_ems18 <- heroin_ems[which(heroin_ems$year == "2018"),]
 heroin_ems19 <- heroin_ems[which(heroin_ems$year == "2019"),]
+
+heroin_train <- rbind(heroin_ems15, heroin_ems16, heroin_ems17, heroin_ems18)
+heroin_test <- heroin_ems19
 
 # # drugs_cops
 # drugs_cops <- drugs_cops[!is.na(drugs_cops$latitude_x), ] %>%
@@ -608,6 +611,18 @@ The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that severa
 # - Locations of fire stations, EMS, police stations, hospitals, pharmacies
 # - temperature
 # - precipitation
+
+# Make a grid with 1000x1000ft grid cells.
+fishnet <- 
+  st_make_grid(cincinnati, cellsize = 1000) %>%
+  st_sf()
+
+# Select grid cells in Cincinnati, assign ID numbers to them.
+fishnet <- 
+  fishnet[cincinnati,] %>%
+  mutate(uniqueID = rownames(.)) %>%
+  dplyr::select(uniqueID)
+
 ggplot() +
   geom_sf(data=cincinnati) +
   geom_sf(data = rbind(vacant_buildings %>% dplyr::select() %>%
@@ -767,17 +782,6 @@ As can be seen, the temporal process is similar to a negative quadratic function
 To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at very local geographies. In some sense the size of the grid cell (1000 sq. ft) is arbitrary; we chose a size that was large enough to demonstrate meaningful variation from other cells, but small enough to capture phenomena that might be local to a subsection of a neighborhood. 
 
 ```{r spacetime}
-# Make a grid with 1000x1000ft grid cells.
-fishnet <- 
-  st_make_grid(cincinnati, cellsize = 1000) %>%
-  st_sf()
-
-# Select grid cells in Cincinnati, assign ID numbers to them.
-fishnet <- 
-  fishnet[cincinnati,] %>%
-  mutate(uniqueID = rownames(.)) %>%
-  dplyr::select(uniqueID)
-
 # Maps of Cincinnati and fishnet overlay
 cincy <- ggplot() +
   geom_sf(data=cincinnati) +
@@ -791,10 +795,9 @@ grid.arrange(cincy, cincy_net, ncol=2)
 
 ```
 ```{r heroin_grid}
-# TODO: Update heroin_ems18 here and throughout the model code to whatever the training data is.
 # Adds count data for number of heroin responses to the fishnet.
 heroin_net <- 
-  heroin_ems18 %>% 
+  heroin_train %>% 
   dplyr::select() %>% 
   mutate(countHeroinResponses = 1) %>% 
   aggregate(., fishnet, sum) %>%
@@ -806,7 +809,7 @@ heroin_net <-
 ggplot() +
   geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
   scale_fill_viridis() +
-  labs(title = "Number of heroin overdose responses per fishnet cell") +
+  labs(title = "Number of heroin overdose responses per fishnet cell, 2015-2018") +
   mapTheme()
 ```
 
@@ -907,7 +910,7 @@ for(i in vars){
 do.call(grid.arrange,c(mapList, ncol = 2, top = "Count of risk factors by grid cell"))
 ```
 
-Next we re-engineer each risk factor point feature as the average nearest-neighbor distance from a grid cell to the three or four nearest points. This provides more flexibility than the aggregation approach and is potentially a bias-reduced estimate of risk exposure.
+Next we re-engineer each risk factor point feature as an average nearest-neighbor distance variable. That is, we calculate the average distance from the center of a grid cell to the three or four nearest points. This provides more flexibility than the aggregation approach and is potentially a bias-reduced estimate of risk exposure.
 
 ```{r nn}
 ###############################################################################
@@ -991,26 +994,39 @@ final_net <-
 # Adding overlapping IDs, like neighborhood or zoning.
 # TODO: Add any metrics we want to here.
 # TODO: Metrics added can be categorical (e.g. name of neighborhood) or numerical (e.g. proportion in poverty)
+
 final_net <-
   st_centroid(final_net) %>%
   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
   st_join(., dplyr::select(sna, SNA_NAME)) %>%
   st_join(., dplyr::select(zoning, zone_type)) %>%
-  st_join(., dplyr::select(zones_likely_drug_sale, potential_drug_use_sites)) %>%
-  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
-  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
-  st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
-  st_join(., dplyr::select(acsMedHome, estimate)) %>%
   st_set_geometry(NULL) %>%
   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
   st_sf() %>%
   na.omit()
 
+####FIX THIS
+# final_net <-
+#   st_centroid(final_net) %>%
+#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
+#   st_join(., dplyr::select(sna, SNA_NAME)) %>%
+#   st_join(., dplyr::select(zoning, zone_type)) %>%
+#   st_join(., dplyr::select(zones_likely_drug_sale, potential_drug_use_sites)) %>%
+#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
+#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
+#   st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
+#   st_join(., dplyr::select(acsMedHome, estimate)) %>%
+#   st_set_geometry(NULL) %>%
+#   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
+#   st_sf() %>%
+#   na.omit()
+
 # Remove duplicated values from final_net.
 final_net <- final_net[!duplicated(final_net),] 
 
+##########FIX THIS ... MAYBE MAKE SEPARATE MAPS AND GRID ARRANGE?
 # Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
-dplyr::select(final_net, SNA_NAME, zone_type) %>%
+dplyr::select(final_net, Neighborhood = SNA_NAME, `Land Use` = zone_type, `Proportion in Poverty` = prop_poverty) %>%
   gather(Variable, Value, -geometry) %>%
   ggplot() +
   geom_sf(aes(fill = Value)) +
@@ -1023,12 +1039,29 @@ dplyr::select(final_net, SNA_NAME, zone_type) %>%
 The correlations between each feature (and different method of engineering the feature) and the outcome of heroin overdose is below. 
 
 ```{r correlations}
-#TODO: correlation plot
+vars <- c(1, 4:20)
+correlation.long <-
+  st_set_geometry(final_net, NULL) %>%
+  dplyr::select(vars) %>%
+  gather(Variable, Value, -countHeroinResponses)
+
+correlation.cor <-
+  correlation.long %>%
+  group_by(Variable) %>%
+  summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
+
+ggplot(correlation.long, aes(Value, countHeroinResponses)) +
+  geom_point(size = 0.1) +
+  geom_text(data = correlation.cor, aes(label = paste("r =", round(correlation, 2))),
+            x=-Inf, y=Inf, vjust = 1, hjust = -.1) +
+  geom_smooth(method = "lm", se = FALSE, colour = "#a2d7d8") +
+  facet_wrap(~Variable, ncol = 3, scales = "free") +
+  labs(title = "Heroin overdose count as a function of risk factors")
 ```
 
 # Modeling approach
 
-Our first modeling approach is a geospatial latent risk model that employs Poisson regression to predict areas of high risk for heroin overdose. The model is trained on a dataset that pools data from four years of EMS heroin overdose data (2015, 2016, 2017, 2018), and the model includes "year" fixed effect to account for temporal differences. The model is tested on data from the final year of EMS data (2019). 
+Our modeling approach is a geospatial latent risk model that employs Poisson regression to predict areas of high risk for heroin overdose. The model is trained on a dataset that pools data from four years of EMS heroin overdose data (2015, 2016, 2017, 2018), and the model includes "year" fixed effect to account for temporal differences. The model is tested on data from the final year of EMS data (2019). 
 
 ### Clustering effects 
 
@@ -1065,16 +1098,16 @@ for(i in vars){
     mapTheme()}
 
 # This needs space to generate correctly - make sure to expand the Plots window when running.
-# do.call(grid.arrange,c(varList, ncol = 4, top = "Local Moran's I statistics, Heroin Responses"))
+do.call(grid.arrange,c(varList, ncol = 4, top = "Local Moran's I statistics, Heroin Responses"))
 
 ###############################################################################
 ##  Poisson regression
 ###############################################################################
 
 # Plot of distribution of heroin response counts: looks like Poisson distribution.
-# ggplot(final_net, aes(countHeroinResponses)) + 
-#   geom_histogram(binwidth = 1) +
-#   labs(title = "Distribution of heroin response by grid cell")
+ggplot(final_net, aes(countHeroinResponses)) +
+  geom_histogram(binwidth = 1) +
+  labs(title = "Distribution of heroin response by grid cell")
 
 ```
 
@@ -1084,7 +1117,8 @@ for(i in vars){
 
 # TODO: Update with desired regression variables.
 # TODO: Names must match the names in final_net.
-reg.vars <- c("abandoned_vehicles.nn", "vacant_buildings.nn", "funTimes.nn", "SNA_NAME", "zone_type")
+column_names <- colnames(final_net)
+reg.vars <- c("Abandoned Cars", "vacant_buildings.nn", "funTimes.nn", "SNA_NAME", "zone_type")
 
 crossValidate <- function(dataset, id, dependentVariable, indVariables) {
   
@@ -1219,7 +1253,7 @@ final_reg <-
     filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
     mutate(uniqueID = rownames(.))
   
-  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
   heroin_KD.1000 <- spatstat::density.ppp(heroin_ppp, 1000)
   heroin_KD.1500 <- spatstat::density.ppp(heroin_ppp, 1500)
   heroin_KD.2000 <- spatstat::density.ppp(heroin_ppp, 2000)
@@ -1237,7 +1271,7 @@ final_reg <-
     scale_fill_viridis() +
     mapTheme()
   
-  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
   heroin_KD <- spatstat::density.ppp(heroin_ppp, 1000)
   
   as.data.frame(heroin_KD) %>%
@@ -1245,12 +1279,12 @@ final_reg <-
     aggregate(., final_net, mean) %>%
     ggplot() +
     geom_sf(aes(fill=value)) +
-    geom_sf(data = sample_n(heroin_ems18, 1500), size = .5) +
+    geom_sf(data = sample_n(heroin_train, 1500), size = .5) +
     scale_fill_viridis() +
     mapTheme()
   
   # Compute kernel density
-  heroin_ppp <- as.ppp(st_coordinates(heroin_ems18), W = st_bbox(final_net))
+  heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
   heroin_KD <- spatstat::density.ppp(heroin_ppp, 1000)
   # Convert kernel density to grid cells taking the mean
   heroin_KDE_sf <- as.data.frame(heroin_KD) %>%
@@ -1268,7 +1302,7 @@ final_reg <-
     #Bind to a layer where test set crime counts are spatially joined to the fisnnet.
     bind_cols(
       aggregate(
-        dplyr::select(heroin_ems18) %>% mutate(heroinCount = 1), ., length) %>%
+        dplyr::select(heroin_train) %>% mutate(heroinCount = 1), ., length) %>%
         mutate(heroinCount = replace_na(heroinCount, 0))) %>%
     #Select the fields we need
     dplyr::select(label, Risk_Category, heroinCount)
@@ -1286,7 +1320,7 @@ final_reg <-
              Risk_Category >= 1 & Risk_Category <= 29 ~ "1% to 29%")) %>%
     bind_cols(
       aggregate(
-        dplyr::select(heroin_ems18) %>% mutate(heroinCount = 1), ., length) %>%
+        dplyr::select(heroin_train) %>% mutate(heroinCount = 1), ., length) %>%
         mutate(heroinCount = replace_na(heroinCount, 0))) %>%
     dplyr::select(label,Risk_Category, heroinCount)
   
@@ -1295,7 +1329,7 @@ final_reg <-
   #   gather(Variable, Value, -label, -Risk_Category, -geometry) %>%
   #   ggplot() +
   #   geom_sf(aes(fill = Risk_Category), colour = NA) +
-  #   geom_sf(data = sample_n(heroin_ems18, 1500), size = .1, colour = "black") +
+  #   geom_sf(data = sample_n(heroin_train, 1500), size = .1, colour = "black") +
   #   facet_wrap(~label, ) +
   #   scale_fill_viridis(discrete = TRUE) +
   #   labs(title="Comparison of Kernel Density and Risk Predictions",
