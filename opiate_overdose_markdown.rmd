@@ -999,22 +999,8 @@ final_net <-
   st_join(., dplyr::select(zones_likely_drug_sale, potential_drug_use_sites)) %>%
   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
-  st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
-
-censusRace_props <- censusRace %>% dplyr::filter(variable == "prop_white" | 
-                                                   variable == "prop_black")
-censusRace_props <- censusRace_props[cincinnati,]
-
-censusRace_props %>% ggplot(aes(fill = value)) +
-  facet_wrap(~variable) +
-  geom_sf(color = NA) +
-  coord_sf(crs = 26915) + 
-  scale_fill_viridis_c() + mapTheme()
-
-acsData_props <- acsData %>% dplyr::filter(variable == "prop_poverty" |
-                                             variable == "prop_bach_or_higher" | 
-                                             variable == "prop_males_25to44")
-
+  st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
+  st_join(., dplyr::select(acsMedHome, estimate)) %>%
   st_set_geometry(NULL) %>%
   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
   st_sf() %>%
@@ -1042,9 +1028,13 @@ The correlations between each feature (and different method of engineering the f
 
 # Modeling approach
 
+Our first modeling approach is a geospatial latent risk model that employs Poisson regression to predict areas of high risk for heroin overdose. The model is trained on a dataset that pools data from four years of EMS heroin overdose data (2015, 2016, 2017, 2018), and the model includes "year" fixed effect to account for temporal differences. The model is tested on data from the final year of EMS data (2019). 
+
+### Clustering effects 
+
+The “Local Moran’s I” is a statistic that will identify heroin overdose events that are significantly non-random (i.e., clustered) relative to adjacent grid cells on the map of Cincinnati. The goal is to identify “hot spots” in which we strongly reject a null hypothesis that the count of narcotics possession crimes at a given location is randomly distributed relative to proximal neighbors
+
 ```{r modeling}
-
-
 ###############################################################################
 ##  Moran's I
 ###############################################################################
@@ -1334,6 +1324,8 @@ final_reg <-
 ```
 
 # Next steps for model improvement
+
+A better model would incorporate panel data representing temporal units and a longitudinal regression design that considers time as a predictor. 
 
 # Conclusion
 
