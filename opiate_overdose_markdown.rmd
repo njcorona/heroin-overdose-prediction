@@ -347,27 +347,27 @@ crimes <- crimes[!is.na(crimes$latitude_x), ] %>%
 c311 <- c311[!is.na(c311$latitude), ] %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326, agr = "constant") %>%
   st_transform(3735)
-graffiti <- c311 %>% filter(grepl("Graffiti", service_name) == TRUE) %>% 
-  filter(requested_date >= as.Date("2015-01-01"))
-blight_311 <- c311 %>% filter(grepl("Unsanitary", service_name) == TRUE |  
-                                          grepl("Waste", service_name) == TRUE |
-                                          grepl("waste", service_name) == TRUE | 
-                                          grepl("Trash", service_name) == TRUE | 
-                                          grepl("trash", service_name) == TRUE | 
-                                          grepl("Dumping", service_name) == TRUE | 
-                                          grepl("dumping", service_name) == TRUE | 
-                                          grepl("Sewage", service_name) == TRUE | 
-                                          grepl("sewage", service_name) == TRUE |
-                                          grepl("Litter", service_name) == TRUE |
-                                          grepl("litter", service_name) == TRUE |
-                                          grepl("Mold", service_name) == TRUE | 
-                                          grepl("Roaches", service_name) == TRUE | 
-                                          grepl("Mice", service_name) == TRUE |
-                                          grepl("Rats", service_name) == TRUE | 
-                                          grepl("Rodents", service_name) == TRUE |
-                                          grepl("Fleas", service_name) == TRUE | 
-                                          grepl("Bed Bugs", service_name) == TRUE) %>%
-  filter(requested_date >= as.Date("2015-01-01"))
+# graffiti <- c311 %>% filter(grepl("Graffiti", service_name) == TRUE) %>% 
+#   filter(requested_date >= as.Date("2015-01-01"))
+# blight_311 <- c311 %>% filter(grepl("Unsanitary", service_name) == TRUE |  
+#                                           grepl("Waste", service_name) == TRUE |
+#                                           grepl("waste", service_name) == TRUE | 
+#                                           grepl("Trash", service_name) == TRUE | 
+#                                           grepl("trash", service_name) == TRUE | 
+#                                           grepl("Dumping", service_name) == TRUE | 
+#                                           grepl("dumping", service_name) == TRUE | 
+#                                           grepl("Sewage", service_name) == TRUE | 
+#                                           grepl("sewage", service_name) == TRUE |
+#                                           grepl("Litter", service_name) == TRUE |
+#                                           grepl("litter", service_name) == TRUE |
+#                                           grepl("Mold", service_name) == TRUE | 
+#                                           grepl("Roaches", service_name) == TRUE | 
+#                                           grepl("Mice", service_name) == TRUE |
+#                                           grepl("Rats", service_name) == TRUE | 
+#                                           grepl("Rodents", service_name) == TRUE |
+#                                           grepl("Fleas", service_name) == TRUE | 
+#                                           grepl("Bed Bugs", service_name) == TRUE) %>%
+#   filter(requested_date >= as.Date("2015-01-01"))
 pest_311 <- c311 %>% filter(grepl("Roaches", service_name) == TRUE | 
                               grepl("roaches", service_name) == TRUE | 
                               grepl("Mice", service_name) == TRUE |
@@ -823,11 +823,20 @@ heroin_net <-
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
 
+heroin_net_test <- 
+  heroin_test %>% 
+  dplyr::select() %>% 
+  mutate(countHeroinResponses = 1) %>% 
+  aggregate(., fishnet, sum) %>%
+  mutate(countHeroinResponses = ifelse(is.na(countHeroinResponses), 0, countHeroinResponses),
+         uniqueID = rownames(.),
+         cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
+
 # Map of grid cells colored by number of heroin responses.
 ggplot() +
   geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
   scale_fill_viridis() +
-  labs(title = "Number of heroin overdose responses per fishnet cell, 2015-2018", fill = "Response\ncount") +
+  labs(title = "Number of heroin overdose responses per fishnet cell, 2015-2018", fill = "EMS response\ncount") +
   mapTheme()
 ```
 
@@ -1043,24 +1052,66 @@ ggplot() +
 
 # Prep final fishnet for analysis.
 final_net <-
-  left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
+  left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID")
+
+final_net_test <- 
+  left_join(heroin_net_test, st_set_geometry(vars_net, NULL), by="uniqueID")
+
+final_net_backup <- final_net
+
+# Add in count of manufacturing/recreational land use zones that intersect with grid cell
+zones <- zones_likely_drug_sale %>% dplyr::select() %>%
+  st_transform(st_crs(fishnet)) %>%
+                         mutate(Legend = "Manufacturing or Rec Zoning") %>%
+  st_join(., fishnet, join=st_within) %>%
+  st_set_geometry(NULL) %>%
+  group_by(uniqueID, Legend) %>%
+  summarize(count = n()) %>%
+  full_join(fishnet) %>%
+  spread(Legend, count, fill=0) %>%
+  st_sf() %>%
+  dplyr::select(-`<NA>`) %>%
+  na.omit()
 
 final_net <-
+  left_join(final_net, st_set_geometry(zones, NULL), by="uniqueID") 
+
+final_net_test <-
+  left_join(final_net_test, st_set_geometry(zones, NULL), by="uniqueID")
+
+# Join ACS/Census data to grid cells
+# This creates duplicates because a single grid cell intersects with more than one tract
+acsData_props_pov <- acsData_props %>% filter(variable == "prop_poverty")
+acsData_props_bach <- acsData_props %>% filter(variable == "prop_bach_or_higher")
+acsData_props_male <- acsData_props %>% filter(variable == "prop_males_25to44")
+
+final_net_TEMP <-
   st_centroid(final_net) %>%
-  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
-  st_join(., dplyr::select(sna, neighborhood = SNA_NAME)) %>%
-  st_join(., dplyr::select(zones_likely_drug_sale, land_use = potential_drug_use_sites)) %>%
-  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
-  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
+  st_join(., dplyr::select(acsData_props_pov %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
+  st_join(., dplyr::select(acsData_props_bach %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
+  st_join(., dplyr::select(acsData_props_male %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
   st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
-  #st_join(., dplyr::select(acsMedHome %>% dplyr::mutate(med_home_value = estimate), med_home_value)) %>%
   st_set_geometry(NULL) %>%
   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
   st_sf() %>%
   na.omit()
 
-# Remove duplicated values from final_net.
-final_net <- final_net[!duplicated(final_net),] 
+# Create grid-cell-level averages of ACS/Census data 
+library(plyr)
+final_net_TEMP <- plyr::ddply(final_net_TEMP,"uniqueID", transform, prop_pov=mean(prop_poverty)) %>% 
+  dplyr::select(-prop_poverty)
+
+final_net_TEMP <- plyr::ddply(final_net_TEMP,"uniqueID", transform, prop_college=mean(prop_bach_or_higher)) %>% dplyr::select(-prop_bach_or_higher) 
+
+final_net_TEMP <- plyr::ddply(final_net_TEMP,"uniqueID", transform, prop_young_males=mean(prop_males_25to44)) %>% dplyr::select(-prop_males_25to44)
+
+final_net_TEMP <- plyr::ddply(final_net_TEMP,"uniqueID", transform, prop_wh=mean(prop_white)) %>% dplyr::select(-prop_white) 
+
+vars <- c(2, 19:22)
+final_net_TEMP <- distinct(final_net_TEMP) %>% dplyr::select(vars)
+
+final_net <- left_join(final_net, final_net_TEMP)
+final_net_test <- left_join(final_net_test, final_net_TEMP)
 
 # # Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
 # neigh <- final_net %>% gather(Variable, Value, -geometry) %>%
@@ -1126,6 +1177,8 @@ The correlations between each feature (and different method of engineering the f
 <span style="font-size:1.2em">**Heroin overdose count as a function of risk factors**</span>
 ```{r correlations}
 # Grouping in separate blocks so that the correlation plots display larger
+detach("package:plyr", unload=TRUE)
+library(tidyverse)
 vars1 <- c(1, 4, 10, 5, 11)
 correlation.long1 <-
   st_set_geometry(final_net, NULL) %>%
@@ -1144,7 +1197,7 @@ correlation.long3 <-
   dplyr::select(vars3) %>%
   gather(Variable, Value, -countHeroinResponses)
 
-vars4 <- c(1, 16, 20, 21, 22)
+vars4 <- c(1, 16, 18, 20, 21)
 correlation.long4 <-
   st_set_geometry(final_net, NULL) %>%
   dplyr::select(vars4) %>%
@@ -1201,7 +1254,7 @@ ggplot(correlation.long4, aes(Value, countHeroinResponses)) +
 
 # Modeling approach
 
-Our modeling approach is a geospatial latent risk model that employs Poisson regression to predict areas of high risk for heroin overdose. The model is trained on a dataset that pools data from four years of EMS heroin overdose data (2015, 2016, 2017, 2018), and the model includes "year" fixed effect to account for temporal differences. The model is tested on data from the final year of EMS data (2019). 
+Our modeling approach is a geospatial latent risk model that employs Poisson regression to predict areas of high risk for heroin overdose. The model is trained on a dataset that pools data from four years of EMS heroin overdose data (2015, 2016, 2017, 2018). The model is tested on data from the final year of EMS data (2019). 
 
 ### Clustering effects 
 
@@ -1240,7 +1293,7 @@ for(i in vars){
 do.call(grid.arrange,c(varList, ncol = 2))
 ```
 
-Heroin overdoses are clustered in prevalent in some grid cells, but across _all_ grid cells, an overdose event is relatively rare. The distributional shape of the outcome in the graph below suggests that poisson regression is most appropriate to deal with predicting an event with such positive skew.
+Heroin overdoses are clustered in prevalent in some grid cells, but across _all_ grid cells, an overdose event is relatively rare. The distributional shape of the outcome in the graph below suggests that Poisson regression is most appropriate to deal with predicting an event with such positive skew.
 
 ```{r poisson_distribution}
 ###############################################################################
@@ -1258,11 +1311,11 @@ ggplot(final_net, aes(countHeroinResponses)) +
 
 ### Training, Testing, and Cross-validating
 
-First, a poisson regression is specified and trained on the pooled data from 2015-2018. A year fixed effect, and a quadratic polynomial term representing year-squared, are included as predictors in the model to account for time effects as well as the curvature of the time effect.
+First, a poisson regression is specified and trained on 100 random subsets of data selected from the pooled 2015-2018 dataset.
 
 ```{r training}
 column_names <- colnames(final_net)
-reg.vars <- c("abandoned_cars.nn", "Adult Entertainment", "Assault Crimes", "adult_entertainment.nn", "SNA_NAME", "zone_type")
+reg.vars <- c("Abandoned Cars", "Adult Entertainment", "Assault Crimes", "Fast Food Restaurants", "Pest Complaints", "Vacant, Condemned Bldgs", "prop_wh", "prop_pov", "UTdistance", "Manufacturing or Rec Zoning")
 
 crossValidate <- function(dataset, id, dependentVariable, indVariables) {
   
@@ -1301,64 +1354,72 @@ reg.cv <- crossValidate(
   indVariables = reg.vars) %>%
   dplyr::select(cvID = cvID, countHeroinResponses, Prediction, geometry)
 
-reg.spatialCV <- crossValidate(
-  dataset = final_net,
-  id = "SNA_NAME",
-  dependentVariable = "countHeroinResponses",
-  indVariables = reg.vars) %>%
-  dplyr::select(cvID = SNA_NAME, countHeroinResponses, Prediction, geometry)
+# reg.spatialCV <- crossValidate(
+#   dataset = final_net,
+#   id = "neighborhood",
+#   dependentVariable = "countHeroinResponses",
+#   indVariables = reg.vars) %>%
+#   dplyr::select(cvID = neighborhood, countHeroinResponses, Prediction, geometry)
+
+# reg.summary <- 
+#   rbind(
+#     mutate(reg.cv,           Error = Prediction - countHeroinResponses,
+#            Regression = "Random k-fold CV"),
+#     
+#     mutate(reg.spatialCV,    Error = Prediction - countHeroinResponses,
+#            Regression = "Spatial LOGO-CV")) %>%
+#   st_sf() 
 
 reg.summary <- 
-  rbind(
-    mutate(reg.cv,           Error = Prediction - countHeroinResponses,
-           Regression = "Random k-fold CV"),
-    
-    mutate(reg.spatialCV,    Error = Prediction - countHeroinResponses,
-           Regression = "Spatial LOGO-CV")) %>%
+  mutate(reg.cv, Error = Prediction - countHeroinResponses,
+           Regression = "Random k-fold CV")  %>%
   st_sf() 
 
 grid.arrange(
   reg.summary %>%
     ggplot() +
     geom_sf(aes(fill = Prediction)) +
-    facet_wrap(~Regression) +
+    #facet_wrap(~Regression) +
     scale_fill_viridis() +
-    labs(title = "Predicted heroin responses by Regression") +
+    labs(title = "Predicted heroin responses") +
     mapTheme() + theme(legend.position="bottom"),
 
   filter(reg.summary, Regression == "Random k-fold CV") %>%
     ggplot() +
     geom_sf(aes(fill = countHeroinResponses)) +
     scale_fill_viridis() +
-    labs(title = "Observed heroin responses\n") +
+    labs(title = "Observed heroin responses") +
     mapTheme() + theme(legend.position="bottom"),
 
   ncol = 2
   )
 
-filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
-  ggplot() +
-  geom_sf(aes(fill = Error)) +
-  facet_wrap(~Regression) +
-  scale_fill_viridis() +
-  labs(title = "Heroin response errors by Regression") +
-  mapTheme()
+# filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Error)) +
+#   facet_wrap(~Regression) +
+#   scale_fill_viridis() +
+#   labs(title = "Heroin response errors by Regression") +
+#   mapTheme()
 
 ```
 
 # Accuracy
 
+When the model is trained on data from 2015-2018, we find that it predicts close to observed values in all deciles of heroin overdose, with a tendency to overpredict. The prediction error, on average, is approximately +/-6 overdose events, as seen in the Mean Absolute Error table below.
+
 ```{r acc}
 
   # Kable/Table of MAE.
   st_set_geometry(reg.summary, NULL) %>%
-  group_by(Regression) %>%
-  summarize(MAE = round(mean(abs(Prediction - countHeroinResponses), na.rm = T),2),
-            SD_MAE = round(sd(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>%
+  #group_by(Regression) %>%
+  summarize(MAE = round(mean(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>%
+            #,
+            #SD_MAE = round(sd(abs(Prediction - countHeroinResponses), na.rm = T),2)) %>%
   kable(caption = "MAE by regression") %>%
   kable_styling("striped", full_width = F) %>%
-  row_spec(1, color = "black", background = "#FDE725FF") %>%
-  row_spec(2, color = "black", background = "#FDE725FF")
+  row_spec(1, color = "black", background = "#FDE725FF") 
+  #row_spec(2, color = "black", background = "#FDE725FF")
 
   # Predicted and observed heroin responses by observed heroin responses decile
   st_set_geometry(reg.summary, NULL) %>%
@@ -1378,25 +1439,69 @@ filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
 
 # Generalizability
 
-```{r gen}
+The model-building process focused on factors that are correlated with heroin overdose per the drug abuse academic literature and popular report. Factor selection was influenced by the higher heroin overdose rate among White men than men of other racial/ethnic groups, and this likely introduced bias into the model, as seen by the much greater mean absolute error for majority-Nonwhite neighborhoods (+/- 5 overdose events, on average) than for majority-White neighborhoods (+/- less than one overdose event, on average).
 
-# I did not adapt this code, as it requires loading in census tract data.
-# The code that Ken uses here is about comparing how the model does in majority white and majority non-white neighborhoods in the burglary / risk prediction markdown.
+```{r generalizability1, include = FALSE}
+tracts17 <- 
+  get_acs(geography = "tract", variables = c("B01001_001E","B01001A_001E"), 
+          year = 2017, state=39, county=061, geometry=T) %>%
+  st_transform(3735)  %>% 
+  dplyr::select(variable, estimate, GEOID) %>%
+  spread(variable, estimate) %>%
+  rename(TotalPop = B01001_001,
+         NumberWhites = B01001A_001) %>%
+  mutate(percentWhite = NumberWhites / TotalPop,
+         raceContext = ifelse(percentWhite > .5, "Majority_White", "Majority_Non_White")) %>%
+  .[sna,]
+```
 
+```{r generalizability2, eval = FALSE}
+tracts17 <- 
+  get_acs(geography = "tract", variables = c("B01001_001E","B01001A_001E"), 
+          year = 2017, state=39, county=061, geometry=T) %>%
+  st_transform(3735)  %>% 
+  dplyr::select(variable, estimate, GEOID) %>%
+  spread(variable, estimate) %>%
+  rename(TotalPop = B01001_001,
+         NumberWhites = B01001A_001) %>%
+  mutate(percentWhite = NumberWhites / TotalPop,
+         raceContext = ifelse(percentWhite > .5, "Majority_White", "Majority_Non_White")) %>%
+  .[sna,]
+```
+
+```{r generalizability3}
+ggplot() + 
+  geom_sf(data = tracts17, aes(fill = raceContext)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Race Context", name="Race Context") +
+  mapTheme() 
+
+# Mean error by neighborhood context
+final_reg <- 
+  reg.summary %>%
+  mutate(uniqueID = rownames(.))
+
+final_reg.tracts <- 
+  st_join(st_centroid(final_reg), tracts17) %>%
+  st_set_geometry(NULL) %>%
+  left_join(dplyr::select(final_reg, uniqueID)) %>%
+  st_sf() %>%
+  na.omit()
+
+st_set_geometry(final_reg.tracts, NULL) %>%
+  group_by(Regression, raceContext) %>%
+  summarize(mean.Error = mean(Error, na.rm = T)) %>%
+  spread(raceContext, mean.Error) %>%
+  kable(caption = "Mean Error by neighborhood racial context") %>%
+  kable_styling("striped", full_width = F)  
 ```
 
 # Robustness checks
 
+As indicated, the model appears to suffer from a focus on particular types of heroin users. Per the earlier evidence, it predicts well in lower-risk areas but is not generalizable across high-risk areas and is in fact outperformed by traditional kernel density "hotspot" methods.
+
 ```{r robch}
 
-# Not exactly sure what robustness means since we already cross-validated, so I'll put the code here that compares our model to a simpler kernel density model.
-
-# Just kidding - I just read the assignment again and it interprets robustness to be accuracy v. generalizability.  That kind of features like in the previous section about generalizabiity, so idk how we want to write this portion of the markdown out.  Regardless, the code here is still about the kernel density model.
-
-final_reg <- 
-    filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
-    mutate(uniqueID = rownames(.))
-  
   heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
   heroin_KD.1000 <- spatstat::density.ppp(heroin_ppp, 1000)
   heroin_KD.1500 <- spatstat::density.ppp(heroin_ppp, 1500)
@@ -1408,24 +1513,24 @@ final_reg <-
   
   heroin_KD.df$Legend <- factor(heroin_KD.df$Legend, levels = c("1000 Ft.", "1500 Ft.", "2000 Ft."))
   
-  ggplot(data=heroin_KD.df, aes(x=x, y=y)) +
-    geom_raster(aes(fill=layer)) + 
-    facet_wrap(~Legend) +
-    coord_sf(crs=st_crs(final_net)) + 
-    scale_fill_viridis() +
-    mapTheme()
+  # ggplot(data=heroin_KD.df, aes(x=x, y=y)) +
+  #   geom_raster(aes(fill=layer)) + 
+  #   facet_wrap(~Legend) +
+  #   coord_sf(crs=st_crs(final_net)) + 
+  #   scale_fill_viridis() +
+  #   mapTheme()
   
   heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
   heroin_KD <- spatstat::density.ppp(heroin_ppp, 1000)
   
-  as.data.frame(heroin_KD) %>%
-    st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
-    aggregate(., final_net, mean) %>%
-    ggplot() +
-    geom_sf(aes(fill=value)) +
-    geom_sf(data = sample_n(heroin_train, 1500), size = .5) +
-    scale_fill_viridis() +
-    mapTheme()
+  # as.data.frame(heroin_KD) %>%
+  #   st_as_sf(coords = c("x", "y"), crs = st_crs(final_net)) %>%
+  #   aggregate(., final_net, mean) %>%
+  #   ggplot() +
+  #   geom_sf(aes(fill=value)) +
+  #   geom_sf(data = sample_n(heroin_train, 1500), size = .5) +
+  #   scale_fill_viridis() +
+  #   mapTheme()
   
   # Compute kernel density
   heroin_ppp <- as.ppp(st_coordinates(heroin_train), W = st_bbox(final_net))
@@ -1453,7 +1558,7 @@ final_reg <-
   
   # Repeat for the risk predictions (our model, not kernel density)
   heroin_risk_sf <-
-    filter(final_reg, Regression == "Spatial LOGO-CV") %>%
+    final_reg %>%
     mutate(label = "Risk Predictions",
            Risk_Category = ntile(Prediction, 100),
            Risk_Category = case_when(
@@ -1491,21 +1596,28 @@ final_reg <-
     mutate(Rate_of_test_set_crimes = countHeroinResponses / sum(countHeroinResponses)) %>%
     ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
     geom_bar(aes(fill=label), position="dodge", stat="identity") +
-    scale_fill_viridis(discrete = TRUE)
+    scale_fill_viridis(discrete = TRUE) +
+    labs(title = "Kernel density model vs. risk predictions")
+    mapTheme()
 
 ```
 
-# Improving the distribution of prevention resources in Cincinnati, OH
-
-```{r improvement}
-
+# Testing on data from 2019
+```{r test}
+sanFran.predictions[reg$na.action,]$SalePrice.Predict <- mean(sanFran[which(sanFran$holdOut == 0),]$SalePrice)
+sanFran.predictions[-reg$na.action,]$SalePrice.Predict <- reg$fitted.values
 ```
-
 # Next steps for model improvement
 
-A better model would incorporate panel data representing temporal units and a longitudinal regression design that considers time as a predictor. 
+We believe that future iterations of latent risk prediction models for heroin overdose in Cincinnati should approach the problem with panel data representing intervals of time and a longitudinal regression design that considers time as a predictor. Such a model could also incorporate time-varying factors like weather (temperature, precipitation) to better understand the seasonality of these tragedies. Our use of pooled cross-sectional data limited our ability to capture the shape of the change trajectory in heroin overdose prevalence in Cincinnati over a three-year period. However, our method did allow us to incorporate many time-invariant spatial features that we believed were critical to predicting latent overdose risk.  
 
-# Conclusion
+# Conclusion: Improving the distribution of prevention resources in Cincinnati, OH
+
+Despite the model's poor performance, we believe the data wrangling and research involved in this analysis is a strong first step toward understanding how geospatial machine learning can help those involved in preventing overdose deaths in Ohio. 
+
+Our premise in this project was that Hamilton County, OH's Narcan Distribution Collaborative could benefit from the results of an analysis identifying areas at highest risk for overdose. The goal was to assist the NDC in the strategic distribution of take-home naloxone kits and provision of training programs for non-medical personnel. Our team envision an app that could recommend areas where NDC should focus its resources, such as buildings or locations where bystanders or companions trained tp use naloxone could be of service (parks, fast food restaurants, etc). The full proposal for the app appears here: https://youtu.be/BigWNOpK8-A.
+
+While this analysis is not at a stage where it could support app development, it could reach that point through different strategies, such as how to model time. 
 
 # References
 [^1]: National Institute on Drug Abuse. (2019). Opioid summaries by state. Accessed from https://www.drugabuse.gov/drugs-abuse/opioids/opioid-summaries-by-state
