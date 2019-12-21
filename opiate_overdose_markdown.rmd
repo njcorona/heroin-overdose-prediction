@@ -596,25 +596,17 @@ her2017 <- ggplot() +
 
 her2019 <- ggplot() +
   geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  geom_sf(data = heroin_ems19, size = 1, color = "#25CB10") +
   labs(title="2019") +
   theme(legend.position = "none") +
   mapTheme()
-# 
-# her2019 <- ggplot() +
-#   geom_sf(data = cincinnati, fill = NA) +
-#   geom_sf(data = heroin_ems19, aes(colour = "Heroin overdose"), show.legend = "point", size = 1) +
-#   scale_colour_manual(values = c("Heroin overdose" = "#25CB10"),
-#     name = NULL, guide = guide_legend(override.aes = list(linetype = "blank"), shape = 16)) +
-#   labs(title="2019") +
-#   mapTheme()
 
 grid.arrange(her2015, her2017, her2019, ncol = 3)
 ```
 
 ### Features associated with heroin overdose 
 
-The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space; followed  in Cincinnati specifically.
+The literature on opioid use indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space; followed  in Cincinnati specifically.
 
 <span style="font-size:1.2em">**Risk Factors**</span>
 ```{r risk_small_multiples, fig.width=10}
@@ -667,7 +659,7 @@ fishnet <-
 #   mapTheme() + 
 #     theme(strip.text = element_text(size = 5))
 
-# Risk factor plots with grid.arrange
+# Risk factor plots with grid.arrange instead
 expl_vac <- ggplot() +
   geom_sf(data=cincinnati) +
   geom_sf(data=vacant_buildings %>% dplyr::select()) + labs(title = "Vacant, Condemned Bldgs") + mapTheme()
@@ -924,20 +916,6 @@ grid.arrange(ab, ac, ncol = 2)
 grid.arrange(ae, ff, ncol = 2)
 grid.arrange(pc, vb, ncol = 2)
 
-# # Makes (but does not display) maps of each risk factor on the fishnet.
-# vars <- unique(vars_net.long$Variable)
-# mapList <- list()
-# for(i in vars){
-#   mapList[[i]] <- 
-#     ggplot() +
-#     geom_sf(data = filter(vars_net.long, Variable == i), aes(fill=value), colour=NA) +
-#     scale_fill_viridis(name="") +
-#     labs(title=i, fill = "Count") +
-#     mapTheme()}
-# 
-# # Maps of risk factors by fishnet.  Takes a few minutes to generate.  May need to change number of columns to generate correctly.
-# do.call(grid.arrange,c(mapList, ncol = 2))
-
 
 ```
 
@@ -1009,19 +987,6 @@ grid.arrange(ab.nn, ac.nn, ncol = 2)
 grid.arrange(ae.nn, ff.nn, ncol = 2)
 grid.arrange(pc.nn, vb.nn, ncol = 2)
 
-# # Creates maps for each nearest neighbor risk factor.
-# vars <- unique(vars_net.long.nn$Variable)
-# mapList <- list()
-# for(i in vars){
-#   mapList[[i]] <- 
-#     ggplot() +
-#     geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
-#     scale_fill_viridis(name="") +
-#     labs(title=i) +
-#     mapTheme()}
-# 
-# # Maps the nearest neighbor risk factors.
-# do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest neighbor risk factors by grid cell"))
 ```
 
 Finally, polygon data (e.g., land use zones, neighborhoods) were explored, as well as the distance to a single point of interest, the Union Terminal train station in Cincinnati. 
@@ -1213,7 +1178,6 @@ correlation.cor1 <-
   correlation.long1 %>%
   group_by(Variable) %>%
   summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
-unique(correlation.long1$Variable)
 ggplot(correlation.long1, aes(Value, countHeroinResponses)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor1, aes(label = paste("r =", round(correlation, 2))),
@@ -1225,7 +1189,6 @@ correlation.cor2 <-
   correlation.long2 %>%
   group_by(Variable) %>%
   summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
-unique(correlation.long2$Variable)
 ggplot(correlation.long2, aes(Value, countHeroinResponses)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor2, aes(label = paste("r =", round(correlation, 2))),
@@ -1237,7 +1200,6 @@ correlation.cor3 <-
   correlation.long3 %>%
   group_by(Variable) %>%
   summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
-unique(correlation.long3$Variable)
 ggplot(correlation.long3, aes(Value, countHeroinResponses)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor3, aes(label = paste("r =", round(correlation, 2))),
@@ -1249,7 +1211,6 @@ correlation.cor4 <-
   correlation.long4 %>%
   group_by(Variable) %>%
   summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
-unique(correlation.long4$Variable)
 ggplot(correlation.long4, aes(Value, countHeroinResponses)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor4, aes(label = paste("r =", round(correlation, 2))),
@@ -1319,7 +1280,7 @@ ggplot(final_net, aes(countHeroinResponses)) +
 
 First, a poisson regression is specified and trained on 100 random subsets of data selected from the pooled 2015-2018 dataset.
 
-```{r training}
+```{r training, include=FALSE}
 column_names <- colnames(final_net)
 reg.vars <- c("Abandoned Cars", "Adult Entertainment", "Assault Crimes", "Fast Food Restaurants", "Pest Complaints", "Vacant, Condemned Bldgs", "prop_wh", "prop_pov", "UTdistance", "Manufacturing or Rec Zoning")
 
@@ -1410,6 +1371,113 @@ grid.arrange(
 
 ```
 
+```{r training_, eval=FALSE}
+column_names <- colnames(final_net)
+reg.vars <- c("Abandoned Cars", "Adult Entertainment", "Assault Crimes", "Fast Food Restaurants", "Pest Complaints", "Vacant, Condemned Bldgs", "prop_wh", "prop_pov", "UTdistance", "Manufacturing or Rec Zoning")
+
+crossValidate <- function(dataset, id, dependentVariable, indVariables) {
+  
+  allPredictions <- data.frame()
+  cvID_list <- unique(dataset[[id]])
+  
+  for (i in cvID_list) {
+    
+    thisFold <- i
+    cat("This hold out fold is", thisFold, "\n")
+    
+    fold.train <- filter(dataset, dataset[[id]] != thisFold) %>% as.data.frame() %>% 
+      dplyr::select(id, geometry, indVariables, dependentVariable)
+    fold.test  <- filter(dataset, dataset[[id]] == thisFold) %>% as.data.frame() %>% 
+      dplyr::select(id, geometry, indVariables, dependentVariable)
+    
+    regression <-
+      glm(countHeroinResponses ~ ., family = "poisson", 
+          data = fold.train %>% 
+            dplyr::select(-geometry, -id))
+    
+    thisPrediction <- 
+      mutate(fold.test, Prediction = predict(regression, fold.test, type = "response"))
+    
+    allPredictions <-
+      rbind(allPredictions, thisPrediction)
+    
+  }
+  return(st_sf(allPredictions))
+}
+
+reg.cv <- crossValidate(
+  dataset = final_net,
+  id = "cvID",
+  dependentVariable = "countHeroinResponses",
+  indVariables = reg.vars) %>%
+  dplyr::select(cvID = cvID, countHeroinResponses, Prediction, geometry)
+
+# reg.spatialCV <- crossValidate(
+#   dataset = final_net,
+#   id = "neighborhood",
+#   dependentVariable = "countHeroinResponses",
+#   indVariables = reg.vars) %>%
+#   dplyr::select(cvID = neighborhood, countHeroinResponses, Prediction, geometry)
+
+# reg.summary <- 
+#   rbind(
+#     mutate(reg.cv,           Error = Prediction - countHeroinResponses,
+#            Regression = "Random k-fold CV"),
+#     
+#     mutate(reg.spatialCV,    Error = Prediction - countHeroinResponses,
+#            Regression = "Spatial LOGO-CV")) %>%
+#   st_sf() 
+
+reg.summary <- 
+  mutate(reg.cv, Error = Prediction - countHeroinResponses,
+           Regression = "Random k-fold CV")  %>%
+  st_sf() 
+
+grid.arrange(
+  reg.summary %>%
+    ggplot() +
+    geom_sf(aes(fill = Prediction)) +
+    #facet_wrap(~Regression) +
+    scale_fill_viridis() +
+    labs(title = "Predicted heroin responses") +
+    mapTheme() + theme(legend.position="bottom"),
+
+  filter(reg.summary, Regression == "Random k-fold CV") %>%
+    ggplot() +
+    geom_sf(aes(fill = countHeroinResponses)) +
+    scale_fill_viridis() +
+    labs(title = "Observed heroin responses") +
+    mapTheme() + theme(legend.position="bottom"),
+
+  ncol = 2
+  )
+
+# filter(reg.summary, Regression == "Spatial LOGO-CV") %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Error)) +
+#   facet_wrap(~Regression) +
+#   scale_fill_viridis() +
+#   labs(title = "Heroin response errors by Regression") +
+#   mapTheme()
+```
+
+### Regression results
+```{r regsum, results="show"}
+reg <-
+      glm(countHeroinResponses ~ `Abandoned Cars` + 
+            `Adult Entertainment` + 
+            `Assault Crimes` +
+            `Fast Food Restaurants` +
+            `Pest Complaints` +
+            `Vacant, Condemned Bldgs` +
+            prop_wh +
+            prop_pov +
+            UTdistance +
+            `Manufacturing or Rec Zoning`, family = "poisson", 
+          data = final_net)
+summary(reg)
+```
+
 # Accuracy
 
 When the model is trained on data from 2015-2018, we find that it predicts close to observed values in all deciles of heroin overdose, with a tendency to overpredict. The prediction error, on average, is approximately +/-6 overdose events, as seen in the Mean Absolute Error table below.
@@ -1425,7 +1493,6 @@ When the model is trained on data from 2015-2018, we find that it predicts close
   kable(caption = "MAE by regression") %>%
   kable_styling("striped", full_width = F) %>%
   row_spec(1, color = "black", background = "#FDE725FF") 
-  #row_spec(2, color = "black", background = "#FDE725FF")
 
   # Predicted and observed heroin responses by observed heroin responses decile
   st_set_geometry(reg.summary, NULL) %>%
@@ -1603,7 +1670,7 @@ As indicated, the model appears to suffer from a focus on particular types of he
     ggplot(aes(Risk_Category,Rate_of_test_set_crimes)) +
     geom_bar(aes(fill=label), position="dodge", stat="identity") +
     scale_fill_viridis(discrete = TRUE) +
-    labs(title = "Kernel density model vs. risk predictions")
+    labs(title = "Kernel density model vs. risk predictions") +
     mapTheme()
 
 ```
@@ -1639,6 +1706,7 @@ ggplot() +
        subtitle="Perfect prediction in orange; actual prediction in green") +
   theme(plot.title = element_text(size = 14,colour = "black"))
 ```
+
 # Next steps for model improvement
 
 We believe that future iterations of latent risk prediction models for heroin overdose in Cincinnati should approach the problem with panel data representing intervals of time and a longitudinal regression design that considers time as a predictor. Such a model could also incorporate time-varying factors like weather (temperature, precipitation) to better understand the seasonality of these tragedies. Our use of pooled cross-sectional data limited our ability to capture the shape of the change trajectory in heroin overdose prevalence in Cincinnati over a three-year period. However, our method did allow us to incorporate many time-invariant spatial features that we believed were critical to predicting latent overdose risk.  
