@@ -1058,6 +1058,9 @@ final_net_test <-
   left_join(heroin_net_test, st_set_geometry(vars_net, NULL), by="uniqueID")
 
 final_net_backup <- final_net
+final_net_test_backup <- final_net_test
+# saveRDS(final_net_backup, "final_net_backup.RDS")
+# saveRDS(final_net_test_backup, "final_net_test_backup.RDS")
 
 # Add in count of manufacturing/recreational land use zones that intersect with grid cell
 zones <- zones_likely_drug_sale %>% dplyr::select() %>%
@@ -1112,6 +1115,9 @@ final_net_TEMP <- distinct(final_net_TEMP) %>% dplyr::select(vars)
 
 final_net <- left_join(final_net, final_net_TEMP)
 final_net_test <- left_join(final_net_test, final_net_TEMP)
+
+# saveRDS(final_net_backup, "final_net_backup.RDS")
+# saveRDS(final_net_test_backup, "final_net_test_backup.RDS")
 
 # # Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
 # neigh <- final_net %>% gather(Variable, Value, -geometry) %>%
@@ -1439,7 +1445,7 @@ When the model is trained on data from 2015-2018, we find that it predicts close
 
 # Generalizability
 
-The model-building process focused on factors that are correlated with heroin overdose per the drug abuse academic literature and popular report. Factor selection was influenced by the higher heroin overdose rate among White men than men of other racial/ethnic groups, and this likely introduced bias into the model, as seen by the much greater mean absolute error for majority-Nonwhite neighborhoods (+/- 5 overdose events, on average) than for majority-White neighborhoods (+/- less than one overdose event, on average).
+Our model-building process focused on factors that are correlated with heroin overdose per the drug abuse academic literature and popular report. Factor selection was influenced by the higher heroin overdose rate among White men than men of other racial/ethnic groups, and this likely introduced bias into the model, as seen by the much greater mean absolute error for majority-Nonwhite neighborhoods in Cincinnati (+/- 4 overdose events, on average) than for majority-White neighborhoods (close to zero, on average).
 
 ```{r generalizability1, include = FALSE}
 tracts17 <- 
@@ -1604,8 +1610,14 @@ As indicated, the model appears to suffer from a focus on particular types of he
 
 # Testing on data from 2019
 ```{r test}
+#Predicted prices as a function of observed prices.**
+
+```{r model_and_predPrices, results = "hide"}
+sanFran.predictions <- filter(sanFran, holdOut == 0)
 sanFran.predictions[reg$na.action,]$SalePrice.Predict <- mean(sanFran[which(sanFran$holdOut == 0),]$SalePrice)
 sanFran.predictions[-reg$na.action,]$SalePrice.Predict <- reg$fitted.values
+
+
 ```
 # Next steps for model improvement
 
