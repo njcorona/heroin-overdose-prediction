@@ -1609,15 +1609,35 @@ As indicated, the model appears to suffer from a focus on particular types of he
 ```
 
 # Testing on data from 2019
+
+A test of this model on data from Cincinnati's 2019 EMS calls related to heroin does not fare well, suggesting significant improvements are necessary before the model could be applied to an actual use case.
+
 ```{r test}
-#Predicted prices as a function of observed prices.**
+#Predictions into 2019
+reg <-
+      glm(countHeroinResponses ~ `Abandoned Cars` + 
+            `Adult Entertainment` + 
+            `Assault Crimes` +
+            `Fast Food Restaurants` +
+            `Pest Complaints` +
+            `Vacant, Condemned Bldgs` +
+            prop_wh +
+            prop_pov +
+            UTdistance +
+            `Manufacturing or Rec Zoning`, family = "poisson", 
+          data = final_net)
 
-```{r model_and_predPrices, results = "hide"}
-sanFran.predictions <- filter(sanFran, holdOut == 0)
-sanFran.predictions[reg$na.action,]$SalePrice.Predict <- mean(sanFran[which(sanFran$holdOut == 0),]$SalePrice)
-sanFran.predictions[-reg$na.action,]$SalePrice.Predict <- reg$fitted.values
+predicted_values <- predict(reg, final_net_test)
+predicted_values <- cbind(predicted_values, dplyr::select(final_net_test, uniqueID, countHeroinResponses))
 
-
+data <- dplyr::select(predicted_values, Predicted = predicted_values, Observed = countHeroinResponses)
+ggplot() + 
+  geom_point(data=data, aes(Observed, Predicted)) +
+  stat_smooth(data=data, aes(Observed, Observed), method = "lm", se = FALSE, size = 1, colour="#FA7800") + 
+  stat_smooth(data=data, aes(Observed, Predicted), method = "lm", se = FALSE, size = 1, colour="#25CB10") + 
+  labs(title="Predicted heroin overdoses as a function\nof actual heroin overdoses in 2019",
+       subtitle="Perfect prediction in orange; actual prediction in green") +
+  theme(plot.title = element_text(size = 14,colour = "black"))
 ```
 # Next steps for model improvement
 
