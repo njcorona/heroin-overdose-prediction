@@ -27,7 +27,7 @@ library(here)
 library(tidyverse)
 library(dplyr)
 library(janitor)
-library(gganimate)
+library(cowplot)
 library(maps)
 library(tools)
 library(rnaturalearth)
@@ -318,6 +318,7 @@ heroin_ems <- left_join(heroin_ems,
                           dplyr::select(floor_date, temperature, precipitation),
                         by = c("floor_date")
 )
+heroin_ems <- heroin_ems[cincinnati,]
 heroin_ems15 <- heroin_ems[which(heroin_ems$year == "2015"),]
 heroin_ems16 <- heroin_ems[which(heroin_ems$year == "2016"),]
 heroin_ems17 <- heroin_ems[which(heroin_ems$year == "2017"),]
@@ -519,31 +520,6 @@ The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as t
 ```{r overdose_vs_naloxone}
 # Heroin overdose vs. Naloxone distribution sites in Hamilton County:
 ggplot() +
-  geom_sf(data = hamilton, fill = NA, color = "gray") +
-  geom_sf(data = hamilton_streets, color = "gray") +
-  geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10", alpha = 0.3) +
-  geom_sf(data = nalox_sites, size = 3, color = "#FA7800", alpha = 0.7) +
-  scale_color_manual(labels = c("Heroin overdose", "Naloxone distribution site")) +
-  labs(title="Supply vs. demand: Location of city heroin overdoses\nvs. county naloxone distribution sites", subtitle = "City of Cincinnati, Hamilton County, OH", caption = "Note: Data on heroin overdoses are only available for the city of Cincinnati; overdose\nevents in greater Hamilton County are unknown and therefore omitted from the map.") +
-  mapTheme()
-
-# Heroin overdose vs. Naloxone distribution sites in Hamilton County:
-ggplot() +
-  geom_sf(data = hamilton, fill = NA, color = "gray") +
-  geom_sf(data = hamilton_streets, color = "gray") +
-  geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems17, size = 1, aes(color = "Heroin overdose"), alpha = 0.3) +
-  geom_sf(data = nalox_sites, size = 3, aes(color = "Naloxone distributor"), alpha = 0.7) +
-  scale_fill_manual(values = c(
-    "Heroin overdose" = "#25CB10",
-    "Naloxone distributor" = "#FA7800"),
-    name = "Site") +
-    #breaks=c("Heroin overdose", "Naloxone distributor")) +
-  labs(title="Supply vs. demand: Location of city heroin overdoses\nvs. county naloxone distribution sites", subtitle = "City of Cincinnati, Hamilton County, OH", caption = "Note: Data on heroin overdoses are only available for the city of Cincinnati; overdose\nevents in greater Hamilton County are unknown and therefore omitted from the map.") +
-  mapTheme()
-
-ggplot() +
   geom_sf(data = hamilton, fill = NA, colour = "gray") +
   geom_sf(data = hamilton_streets, colour = "gray") +
   geom_sf(data = cincinnati, fill = NA) +
@@ -602,52 +578,46 @@ This analysis focuses on heroin overdoses specifically, rather than other opioid
 
 Data from Cincinnati mirror this statewide trend. The following maps plot the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019 based on EMS call data. 
 
-```{r exploratory}
-# # These years only have 1-17 records per year.
-# crimes <- crimes[which(str_sub(crimes$date_reported, start = 1, end = 4) != 1991 &
-#                          str_sub(crimes$date_reported, start = 1, end = 4) != 2003 &
-#                          str_sub(crimes$date_reported, start = 1, end = 4) != 2007 &
-#                          str_sub(crimes$date_reported, start = 1, end = 4) != 2008 &
-#                          str_sub(crimes$date_reported, start = 1, end = 4) != 2009
-# ),]
-# 
-# # These years only have 74-310 records per year.
-# code <- code[which(str_sub(code$entered_date, start = 1, end = 4) != 1999 &
-#                      str_sub(code$entered_date, start = 1, end = 4) != 2000
-# ),]
-
-ggplot() +
+<span style="font-size:1.2em">**Locations of heroin overdose events in Cincinnati**</span>
+```{r exploratory, fig.width = 13}
+her2015 <- ggplot() +
   geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems15, size = 1, color = "#8FA108") +
-  labs(title="Heroin overdose events 2015", subtitle = "Cincinnati, OH") +
+  geom_sf(data = heroin_ems15, size = 1, color = "#25CB10") +
+  labs(title="2015") +
   theme(legend.position = "none") +
   mapTheme()
 
-ggplot() +
+her2017 <- ggplot() +
   geom_sf(data = cincinnati, fill = NA) +
   geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
-  labs(title="Heroin overdose events 2017", subtitle = "Cincinnati, OH") +
+  labs(title="2017") +
   theme(legend.position = "none") +
   mapTheme()
 
-ggplot() +
+her2019 <- ggplot() +
   geom_sf(data = cincinnati, fill = NA) +
-  geom_sf(data = heroin_ems19, size = 1, color = "#5AB60C") +
-  labs(title="Heroin overdose events 2019", subtitle = "Cincinnati, OH") +
+  geom_sf(data = heroin_ems17, size = 1, color = "#25CB10") +
+  labs(title="2019") +
   theme(legend.position = "none") +
   mapTheme()
+# 
+# her2019 <- ggplot() +
+#   geom_sf(data = cincinnati, fill = NA) +
+#   geom_sf(data = heroin_ems19, aes(colour = "Heroin overdose"), show.legend = "point", size = 1) +
+#   scale_colour_manual(values = c("Heroin overdose" = "#25CB10"),
+#     name = NULL, guide = guide_legend(override.aes = list(linetype = "blank"), shape = 16)) +
+#   labs(title="2019") +
+#   mapTheme()
+
+grid.arrange(her2015, her2017, her2019, ncol = 3)
 ```
 
 ### Features associated with heroin overdose 
 
 The literature on opioid use (e.g., INSERT FOOTNOTES HERE) indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space; followed  in Cincinnati specifically.
 
-```{r risk_small_multiples}
-# TODO: Include any of the following?
-# - Locations of fire stations, EMS, police stations, hospitals, pharmacies
-# - temperature
-# - precipitation
-
+<span style="font-size:1.2em">**Risk Factors**</span>
+```{r risk_small_multiples, fig.width=10}
 # Make a grid with 1000x1000ft grid cells.
 fishnet <- 
   st_make_grid(cincinnati, cellsize = 1000) %>%
@@ -659,48 +629,45 @@ fishnet <-
   mutate(uniqueID = rownames(.)) %>%
   dplyr::select(uniqueID)
 
-ggplot() +
-  geom_sf(data=cincinnati) +
-  geom_sf(data = rbind(vacant_buildings %>% dplyr::select() %>%
-                         st_transform(st_crs(fishnet)) %>%
-                         mutate(Legend = "Vacant, Condemned Bldgs"),
-                       abandoned_vehicles %>% dplyr::select() %>%
-                         st_transform(st_crs(fishnet)) %>%
-                         mutate(Legend = "Abandoned Cars"),
-                       complainedTrash %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Trash Complaints"),
-                       pest_311 %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Pest Complaints"),
-                       # graffiti %>% dplyr::select() %>%
-                       #   st_transform((st_crs(fishnet))) %>%
-                       #   mutate(Legend = "Graffiti Complaints"),
-                       crime_assault %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Assault Crimes"),
-                       crime_murder %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Murder/Homicide"),
-                       zones_likely_drug_sale %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Manufacturing and Recreational Land Use"),
-                       funTimes %>% dplyr::select() %>%
-                         st_transform(st_crs(fishnet)) %>%
-                         mutate(Legend = "Adult Entertainment"),
-                       firearms %>% dplyr::select() %>%
-                         st_transform(st_crs(fishnet)) %>%
-                         mutate(Legend = "Firearms Vendors"),
-                       ffood %>% dplyr::select() %>%
-                         st_transform(st_crs(fishnet)) %>%
-                         mutate(Legend = "Fast Food Restaurants")),
-          size = .1) +
-  facet_wrap(~Legend, ncol = 2) +
-  labs(title = "Risk Factors") +
-  mapTheme() + 
-    theme(strip.text = element_text(size = 5))
+# ggplot() +
+#   geom_sf(data=cincinnati) +
+#   geom_sf(data = rbind(vacant_buildings %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Vacant, Condemned Bldgs"),
+#                        abandoned_vehicles %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Abandoned Cars"),
+#                        complainedTrash %>% dplyr::select() %>%
+#                          st_transform((st_crs(fishnet))) %>%
+#                          mutate(Legend = "Trash Complaints"),
+#                        pest_311 %>% dplyr::select() %>%
+#                          st_transform((st_crs(fishnet))) %>%
+#                          mutate(Legend = "Pest Complaints"),
+#                        crime_assault %>% dplyr::select() %>%
+#                          st_transform((st_crs(fishnet))) %>%
+#                          mutate(Legend = "Assault Crimes"),
+#                        crime_murder %>% dplyr::select() %>%
+#                          st_transform((st_crs(fishnet))) %>%
+#                          mutate(Legend = "Murder/Homicide"),
+#                        zones_likely_drug_sale %>% dplyr::select() %>%
+#                          st_transform((st_crs(fishnet))) %>%
+#                          mutate(Legend = "Manufacturing and Recreational Land Use"),
+#                        funTimes %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Adult Entertainment"),
+#                        firearms %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Firearms Vendors"),
+#                        ffood %>% dplyr::select() %>%
+#                          st_transform(st_crs(fishnet)) %>%
+#                          mutate(Legend = "Fast Food Restaurants")),
+#           size = .1) +
+#   facet_wrap(~Legend, ncol = 2) +
+#   labs(title = "Risk Factors") +
+#   mapTheme() + 
+#     theme(strip.text = element_text(size = 5))
 
-# Alternative
+# Risk factor plots with grid.arrange
 expl_vac <- ggplot() +
   geom_sf(data=cincinnati) +
   geom_sf(data=vacant_buildings %>% dplyr::select()) + labs(title = "Vacant, Condemned Bldgs") + mapTheme()
@@ -727,7 +694,7 @@ expl_mh <- ggplot() +
 
 expl_mrlu <- ggplot() +
   geom_sf(data=cincinnati) +
-  geom_sf(data=zones_likely_drug_sale %>% dplyr::select()) + labs(title = "Manufacturing/Recreational Land Use") + mapTheme()
+  geom_sf(data=zones_likely_drug_sale %>% dplyr::select()) + labs(title = "Manufacturing/Recreational Land Use Zones") + mapTheme()
 
 expl_ae <- ggplot() +
   geom_sf(data=cincinnati) +
@@ -741,70 +708,85 @@ expl_ff <- ggplot() +
   geom_sf(data=cincinnati) +
   geom_sf(data=ffood %>% dplyr::select()) + labs(title = "Fast Food Restaurants") + mapTheme()
 
-grid.arrange(expl_vac, expl_av, expl_ct, expl_pc, expl_a, expl_mh, expl_mrlu, expl_ae, expl_fv, expl_ff, ncol=2)
+grid.arrange(expl_vac, expl_av, ncol = 2) 
+grid.arrange(expl_ct, expl_pc, ncol = 2)
+grid.arrange(expl_a, expl_mh, ncol = 2)
+grid.arrange(expl_mrlu, expl_ae, ncol = 2)
+grid.arrange(expl_fv, expl_ff, ncol=2)
 
-# ggplot() +
-#   geom_sf(data=cincinnati) +
-#   geom_sf(data = rbind(affHousing,abandonBuildings,sanitation,industrial_zones,overdose,
-#                        homicide,farmMarket)) +
-#         #  size = .1) +
-#   facet_wrap(~Legend, ncol = 3) +
-#   labs(title = "Spatial Distributuion of Risk Factors") +
-#   mapTheme() +
-#   theme(strip.text = element_text(size = 5))
 ```
 
 The maps suggest that most but not all of these factors demonstrate spatial clustering similar to Cincinnati's heroin overdose sites and may therefore be useful in predicting overdose risk.
 
-The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about trash and pests as well as the locations of firearms dealers. Trash and pest complaints are too prevalent to be of use here, while firearms and weapons retail are too sparse.
+The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about trash; crimes classified as assault; and the locations of firearms dealers. Trash complaints and assaults are too prevalent to be of use, while firearms and weapons retail are too sparse.
 
 Data from the U.S. Census and American Communities Survey were also explored as potential predictors of heroin overdose. The proportion of various demographic groups by census tract are displayed below.
 
-```{r census_acs_exploratory}
+<span style="font-size:1.2em">**Demographic and Socioeconomic Factors by Census Tract**</span>
+```{r census_acs_exploratory, fig.width=10}
 censusRace_props <- censusRace %>% dplyr::filter(variable == "prop_white" | 
                                                    variable == "prop_black")
 censusRace_props <- censusRace_props[cincinnati,]
 
-censusRace_props %>% ggplot(aes(fill = value)) +
-  facet_wrap(~variable) +
+propWhite <- censusRace_props %>% 
+  filter(variable == "prop_white") %>%
+  ggplot(aes(fill = value)) +
   geom_sf(color = NA) +
   coord_sf(crs = 26915) + 
-  scale_fill_viridis_c() + mapTheme()
-
+  scale_fill_viridis_c() + 
+  labs(title = "Proportion White residents", fill = "Proportion") +
+  mapTheme()
+propBlack <- censusRace_props %>% 
+  filter(variable == "prop_black") %>%
+  ggplot(aes(fill = value)) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + 
+  labs(title = "Proportion Black residents", fill = "Proportion") +
+  mapTheme()
+  
 acsData_props <- acsData %>% dplyr::filter(variable == "prop_poverty" |
                                              variable == "prop_bach_or_higher" | 
                                              variable == "prop_males_25to44")
 acsData_props <- acsData_props[cincinnati, ]
-acsData_props %>% ggplot(aes(fill = estimate)) +
-  facet_wrap(~variable) +
+
+propPov <- acsData_props %>% 
+  filter(variable == "prop_poverty") %>%
+  ggplot(aes(fill = estimate)) +
   geom_sf(color = NA) +
   coord_sf(crs = 26915) + 
-  scale_fill_viridis_c() + mapTheme()
-
-acsData <- acsData %>%
-  group_by(variable) %>%
-  mutate(grouped_id = row_number())
-acsYoungMen <- acsData %>% spread(key = "variable", value = "estimate") %>%
-  dplyr::select(-grouped_id)
-acsYoungMen <- acsYoungMen %>% mutate(
-  males_25to44 = males_25_29+males_30_34+males_35_39+males_40_44) %>%
-  gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
-  dplyr::select(GEOID, NAME, variable, estimate, geometry) %>%
-  dplyr::filter(variable == "males_25to44")
-acsYoungMen <- acsYoungMen[cincinnati, ]
-acsYoungMen %>% ggplot(aes(fill = estimate)) +
-  facet_wrap(~variable) +
+  scale_fill_viridis_c() + 
+  labs(title = "Proportion residents in poverty", fill = "Proportion") +
+  mapTheme()
+propBach <- acsData_props %>% 
+  filter(variable == "prop_bach_or_higher") %>%
+  ggplot(aes(fill = estimate)) +
   geom_sf(color = NA) +
-  coord_sf(crs = 26915) +
-  scale_fill_viridis_c() + mapTheme()
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + 
+  labs(title = "Proportion college-educated", fill = "Proportion") +
+  mapTheme()
+propMales <- acsData_props %>% 
+  filter(variable == "prop_males_25to44") %>%
+  ggplot(aes(fill = estimate)) +
+  geom_sf(color = NA) +
+  coord_sf(crs = 26915) + 
+  scale_fill_viridis_c() + 
+  labs(title = "Proportion male residents age 25-44", fill = "Proportion") +
+  mapTheme()
 
 acsMedHome <- acsData %>% dplyr::filter(variable == "median_home_value")
 acsMedHome <- acsMedHome[cincinnati, ]
-acsMedHome %>% ggplot(aes(fill = estimate)) +
-  facet_wrap(~variable) +
+medHome <- acsMedHome %>% ggplot(aes(fill = estimate)) +
   geom_sf(color = NA) +
   coord_sf(crs = 26915) + 
-  scale_fill_viridis_c() + mapTheme()
+  scale_fill_viridis_c() + 
+  labs(title = "Median home value", fill = "Home value") +
+  mapTheme()
+
+grid.arrange(propWhite, propBlack, ncol = 2) 
+grid.arrange(propPov, propBach, ncol = 2)
+grid.arrange(propMales, medHome, ncol = 2)
 ```
 
 Heroin use in Ohio is most prevalent among White, non-Hispanic males aged 25-44[^16], and it does appear that the proportion of young- and middle-aged White men in Cincinnati tracts demonstrates a roughly similar distribution as overdose events, with some exceptions. Poverty and low rates of college education also appear to be correlated with overdose.
@@ -817,7 +799,7 @@ As can be seen, the temporal process is similar to a negative quadratic function
 
 To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at very local geographies. In some sense the size of the grid cell (1000 sq. ft) is arbitrary; we chose a size that was large enough to demonstrate meaningful variation from other cells, but small enough to capture phenomena that might be local to a subsection of a neighborhood. 
 
-```{r spacetime}
+```{r spacetime, fig.width=10}
 # Maps of Cincinnati and fishnet overlay
 cincy <- ggplot() +
   geom_sf(data=cincinnati) +
@@ -845,7 +827,7 @@ heroin_net <-
 ggplot() +
   geom_sf(data = heroin_net, aes(fill = countHeroinResponses)) +
   scale_fill_viridis() +
-  labs(title = "Number of heroin overdose responses per fishnet cell, 2015-2018") +
+  labs(title = "Number of heroin overdose responses per fishnet cell, 2015-2018", fill = "Response\ncount") +
   mapTheme()
 ```
 
@@ -858,35 +840,8 @@ First, we take a straightforward approach of counting the number of factor incid
 
 Note that aggregation only applies to data that are points in space (e.g., locations of vacant buildings, assaults, fast food restaurants) and not to data that are spread across larger scales (e.g., a tract of land that is zoned for manufacturing use). Also note that firearms dealers have been omitted as a factor because there are so few data (<30 locations).
 
-```{r counts}
-###############################################################################
-## Multiple map of risk factors (point data on Cincinnati boundary)
-###############################################################################
-
-# TODO: Update with our desired risk factors.
-# # Small multiple map of risk factors
-# ggplot() +
-#   geom_sf(data=cincinnati) +
-#   geom_sf(data = rbind(abandoned_vehicles %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Abandoned_Cars"),
-#                        funTimes %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Fun_Times"), 
-#                        firearms %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Firearms_Vendors"),
-#                        vacant_buildings %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Vacant_Buildings"), 
-#                        nalox_sites %>% dplyr::select() %>%
-#                          st_transform(st_crs(fishnet)) %>%
-#                          mutate(Legend = "Nalox_Sites")),
-#           size = .1) +
-#   facet_wrap(~Legend, ncol = 2) +
-#   labs(title = "Risk Factors") +  
-#   mapTheme()
-
+<span style="font-size:1.2em">**Count of risk factors by grid cell**</span>
+```{r counts, fig.width=10}
 ###############################################################################
 ## Aggregate risk factor count data into fishnet.
 ###############################################################################
@@ -898,15 +853,9 @@ vars_net <-
                        abandoned_vehicles %>% dplyr::select() %>%
                          st_transform(st_crs(fishnet)) %>%
                          mutate(Legend = "Abandoned Cars"),
-                       complainedTrash %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Trash Complaints"),
                        pest_311 %>% dplyr::select() %>%
                          st_transform((st_crs(fishnet))) %>%
                          mutate(Legend = "Pest Complaints"),
-                       crime_assault %>% dplyr::select() %>%
-                         st_transform((st_crs(fishnet))) %>%
-                         mutate(Legend = "Assault Crimes"),
                        crime_murder %>% dplyr::select() %>%
                          st_transform((st_crs(fishnet))) %>%
                          mutate(Legend = "Murder/Homicide"),
@@ -931,49 +880,84 @@ vars_net.long <-
   vars_net %>%
   gather(Variable, value, -geometry, -uniqueID)
 
-# Makes (but does not display) maps of each risk factor on the fishnet.
-vars <- unique(vars_net.long$Variable)
-mapList <- list()
-for(i in vars){
-  mapList[[i]] <- 
-    ggplot() +
-    geom_sf(data = filter(vars_net.long, Variable == i), aes(fill=value), colour=NA) +
-    scale_fill_viridis(name="") +
-    labs(title=i) +
-    mapTheme()}
+ab <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Abandoned Cars"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Abandoned Cars", fill = "Count") +
+  mapTheme()
+ae <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Adult Entertainment"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Adult Entertainment", fill = "Count") +
+  mapTheme()
+ff <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Fast Food Restaurants"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Fast Food Restaurants", fill = "Count") +
+  mapTheme()
+mh <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Murder/Homicide"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Murder/Homicide", fill = "Count") +
+  mapTheme()
+pc <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Pest Complaints"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Pest Complaints", fill = "Count") +
+  mapTheme()
+vb <- ggplot() +
+  geom_sf(data = filter(vars_net.long, Variable == "Vacant, Condemned Bldgs"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Vacant, Condemned Bldgs", fill = "Count") +
+  mapTheme()
 
-# Maps of risk factors by fishnet.  Takes a few minutes to generate.  May need to change number of columns to generate correctly.
-do.call(grid.arrange,c(mapList, ncol = 2, top = "Count of risk factors by grid cell"))
+grid.arrange(ab, ae, ncol = 2)
+grid.arrange(ff, mh, ncol = 2)
+grid.arrange(pc, vb, ncol = 2)
+
+# # Makes (but does not display) maps of each risk factor on the fishnet.
+# vars <- unique(vars_net.long$Variable)
+# mapList <- list()
+# for(i in vars){
+#   mapList[[i]] <- 
+#     ggplot() +
+#     geom_sf(data = filter(vars_net.long, Variable == i), aes(fill=value), colour=NA) +
+#     scale_fill_viridis(name="") +
+#     labs(title=i, fill = "Count") +
+#     mapTheme()}
+# 
+# # Maps of risk factors by fishnet.  Takes a few minutes to generate.  May need to change number of columns to generate correctly.
+# do.call(grid.arrange,c(mapList, ncol = 2))
+
+
 ```
 
 Next we re-engineer each risk factor point feature as an average nearest-neighbor distance variable. That is, we calculate the average distance from the center of a grid cell to the three or four nearest points. This provides more flexibility than the aggregation approach and is potentially a bias-reduced estimate of risk exposure.
 
-```{r nn}
+<span style="font-size:1.2em">**Nearest neighbor risk factors by grid cell**</span>
+```{r nn, fig.width=10}
 ###############################################################################
 ## Create nearest-neighbor risk metrics.
 ###############################################################################
 
 # Gets average distance to the 3 or 4 nearest neighboring abandoned vehicles from the center of each fishnet cell.
-vars_net$vacant_buildings.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(vacant_buildings), 4)
-
 vars_net$abandoned_vehicles.nn =
   nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(abandoned_vehicles), 4)
 
-vars_net$trash_complaint.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(complainedTrash), 4)
-
-vars_net$assault.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(crime_assault), 4)
-
-vars_net$murder.nn =
-  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(crime_murder), 4)
-
-vars_net$fun_times.nn =
+vars_net$adult_entertainment.nn =
   nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(funTimes), 3)
 
 vars_net$fast_food.nn =
   nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(ffood), 4)
+
+vars_net$murder.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(crime_murder), 4)
+
+vars_net$pest_complaints.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(pest_311), 4)
+
+vars_net$vacant_buildings.nn =
+  nn_function(st_coordinates(st_centroid(vars_net)), st_coordinates(vacant_buildings), 4)
 
 # Converts data from wide to long.
 vars_net.long.nn <- 
@@ -981,20 +965,54 @@ vars_net.long.nn <-
   dplyr::select(ends_with(".nn")) %>%
   gather(Variable, value, -geometry, -uniqueID)
 
-# Creates maps for each nearest neighbor risk factor.
-vars <- unique(vars_net.long.nn$Variable)
-mapList <- list()
-for(i in vars){
-  mapList[[i]] <- 
-    ggplot() +
-    geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
-    scale_fill_viridis(name="") +
-    labs(title=i) +
-    mapTheme()}
+ab.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "abandoned_vehicles.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Abandoned Cars.nn", fill = "Count") +
+  mapTheme()
+ae.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "adult_entertainment.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Adult Entertainment.nn", fill = "Count") +
+  mapTheme()
+ff.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "fast_food.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Fast Food Restaurants.nn", fill = "Count") +
+  mapTheme()
+mh.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "murder.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Murder/Homicide.nn", fill = "Count") +
+  mapTheme()
+pc.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "pest_complaints.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Pest Complaints.nn", fill = "Count") +
+  mapTheme()
+vb.nn <- ggplot() +
+  geom_sf(data = filter(vars_net.long.nn, Variable == "vacant_buildings.nn"), aes(fill=value), colour=NA) +
+  scale_fill_viridis(name="") +
+  labs(title="Vacant, Condemned Bldgs.nn", fill = "Count") +
+  mapTheme()
 
-# Maps the nearest neighbor risk factors.
-# TODO: It'll just need to be added to the fishnet itself here.
-do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest neighbor risk factors by grid cell"))
+grid.arrange(ab.nn, ae.nn, ncol = 2)
+grid.arrange(ff.nn, mh.nn, ncol = 2)
+grid.arrange(pc.nn, vb.nn, ncol = 2)
+
+# # Creates maps for each nearest neighbor risk factor.
+# vars <- unique(vars_net.long.nn$Variable)
+# mapList <- list()
+# for(i in vars){
+#   mapList[[i]] <- 
+#     ggplot() +
+#     geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
+#     scale_fill_viridis(name="") +
+#     labs(title=i) +
+#     mapTheme()}
+# 
+# # Maps the nearest neighbor risk factors.
+# do.call(grid.arrange,c(mapList, ncol =2, top = "Nearest neighbor risk factors by grid cell"))
 ```
 
 Finally, polygon data (e.g., land use zones, neighborhoods) were explored, as well as the distance to a single point of interest, the Union Terminal train station in Cincinnati. 
@@ -1016,83 +1034,133 @@ vars_net$UTdistance =
 ggplot() +
   geom_sf(data=vars_net, aes(fill=UTdistance)) +
   scale_fill_viridis() +
-  labs(title="Euclidean distance to Union Terminal transit hub", subtitle = "Cincinnati, OH") +
+  labs(title="Euclidean distance to Union Terminal transit hub", subtitle = "Cincinnati, OH", fill = "Distance") +
   mapTheme() 
 
 ###############################################################################
-##  Adding non-point data to the fishnet.  i.e. stuff it overlaps with.
+##  Adding non-point data to the fishnet (tracts, zones etc)
 ###############################################################################
 
 # Prep final fishnet for analysis.
 final_net <-
   left_join(heroin_net, st_set_geometry(vars_net, NULL), by="uniqueID") 
 
-# Adding overlapping IDs, like neighborhood or zoning.
-# TODO: Add any metrics we want to here.
-# TODO: Metrics added can be categorical (e.g. name of neighborhood) or numerical (e.g. proportion in poverty)
-
 final_net <-
   st_centroid(final_net) %>%
   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
-  st_join(., dplyr::select(sna, SNA_NAME)) %>%
-  st_join(., dplyr::select(zoning, zone_type)) %>%
+  st_join(., dplyr::select(sna, neighborhood = SNA_NAME)) %>%
+  st_join(., dplyr::select(zones_likely_drug_sale, land_use = potential_drug_use_sites)) %>%
+  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
+  st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
+  st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
+  #st_join(., dplyr::select(acsMedHome %>% dplyr::mutate(med_home_value = estimate), med_home_value)) %>%
   st_set_geometry(NULL) %>%
   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
   st_sf() %>%
   na.omit()
 
-####FIX THIS
-# final_net <-
-#   st_centroid(final_net) %>%
-#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_poverty = estimate), prop_poverty)) %>%
-#   st_join(., dplyr::select(sna, SNA_NAME)) %>%
-#   st_join(., dplyr::select(zoning, zone_type)) %>%
-#   st_join(., dplyr::select(zones_likely_drug_sale, potential_drug_use_sites)) %>%
-#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_bach_or_higher = estimate), prop_bach_or_higher)) %>%
-#   st_join(., dplyr::select(acsData_props %>% dplyr::mutate(prop_males_25to44 = estimate), prop_males_25to44)) %>%
-#   st_join(., dplyr::select(censusRace_props %>% dplyr::mutate(prop_white = value), prop_white)) %>%
-#   st_join(., dplyr::select(acsMedHome, estimate)) %>%
-#   st_set_geometry(NULL) %>%
-#   left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
-#   st_sf() %>%
-#   na.omit()
-
 # Remove duplicated values from final_net.
 final_net <- final_net[!duplicated(final_net),] 
 
-##########FIX THIS ... MAYBE MAKE SEPARATE MAPS AND GRID ARRANGE?
-# Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
-dplyr::select(final_net, Neighborhood = SNA_NAME, `Land Use` = zone_type, `Proportion in Poverty` = prop_poverty) %>%
-  gather(Variable, Value, -geometry) %>%
-  ggplot() +
-  geom_sf(aes(fill = Value)) +
-  facet_wrap(~Variable) +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title = "Aggregate Areas") +
-  mapTheme() + theme(legend.position = "none")
+# # Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
+# neigh <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == neighborhood) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Neighborhoods") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# land <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == land_use) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Manufacturing & Recreational Land Use") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# pov <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == prop_poverty) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Proportion of Residents in Poverty") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# white <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == prop_white) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Proportion White Residents") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# coll <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == prop_bach_or_higher) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Proportion of College-Educated Residents") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# males <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == prop_males_25to44) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Proportion of Males Age 25-44") +
+#   mapTheme() + theme(legend.position = "none")
+# 
+# medH <- final_net %>% gather(Variable, Value, -geometry) %>%
+#   filter(Variable == med_home_value) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = Value)) +
+#   scale_fill_viridis(discrete = TRUE) +
+#   labs(title = "Median Home Value") +
+#   mapTheme() + theme(legend.position = "none")
+  
 ```
 
 The correlations between each feature (and different method of engineering the feature) and the outcome of heroin overdose is below. 
 
+<span style="font-size:1.2em">**Heroin overdose count as a function of risk factors**</span>
 ```{r correlations}
-vars <- c(1, 4:20)
-correlation.long <-
+# Grouping by four so that the correlation plots display nicer
+vars1 <- c(1, 4:20)
+correlation.long1 <-
   st_set_geometry(final_net, NULL) %>%
-  dplyr::select(vars) %>%
+  dplyr::select(vars1) %>%
   gather(Variable, Value, -countHeroinResponses)
 
-correlation.cor <-
+vars2 <- c(1, 4:20)
+correlation.long2 <-
+  st_set_geometry(final_net, NULL) %>%
+  dplyr::select(vars2) %>%
+  gather(Variable, Value, -countHeroinResponses)
+
+correlation.cor1 <-
+  correlation.long1 %>%
+  group_by(Variable) %>%
+  summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
+unique(correlation.long1$Variable)
+ggplot(correlation.long1, aes(Value, countHeroinResponses)) +
+  geom_point(size = 0.1) +
+  geom_text(data = correlation.cor1, aes(label = paste("r =", round(correlation, 2))),
+            x=-Inf, y=Inf, vjust = 1, hjust = -.1) +
+  geom_smooth(method = "lm", se = FALSE, colour = "#a2d7d8") +
+  facet_wrap(~Variable, ncol = 2, scales = "free") 
+
+correlation.cor2 <-
   correlation.long %>%
   group_by(Variable) %>%
   summarize(correlation = cor(Value, countHeroinResponses, use = "complete.obs"))
-
-ggplot(correlation.long, aes(Value, countHeroinResponses)) +
+unique(correlation.long2$Variable)
+ggplot(correlation.long2, aes(Value, countHeroinResponses)) +
   geom_point(size = 0.1) +
-  geom_text(data = correlation.cor, aes(label = paste("r =", round(correlation, 2))),
+  geom_text(data = correlation.cor2, aes(label = paste("r =", round(correlation, 2))),
             x=-Inf, y=Inf, vjust = 1, hjust = -.1) +
   geom_smooth(method = "lm", se = FALSE, colour = "#a2d7d8") +
-  facet_wrap(~Variable, ncol = 3, scales = "free") +
-  labs(title = "Heroin overdose count as a function of risk factors")
+  facet_wrap(~Variable, ncol = 2, scales = "free") 
 ```
 
 # Modeling approach
@@ -1154,7 +1222,7 @@ ggplot(final_net, aes(countHeroinResponses)) +
 # TODO: Update with desired regression variables.
 # TODO: Names must match the names in final_net.
 column_names <- colnames(final_net)
-reg.vars <- c("Abandoned Cars", "vacant_buildings.nn", "fun_times.nn", "SNA_NAME", "zone_type")
+reg.vars <- c("Abandoned Cars", "vacant_buildings.nn", "adult_entertainment.nn", "SNA_NAME", "zone_type")
 
 crossValidate <- function(dataset, id, dependentVariable, indVariables) {
   

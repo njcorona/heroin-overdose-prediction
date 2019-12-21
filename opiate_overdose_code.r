@@ -1214,18 +1214,35 @@ acsData_props %>% ggplot(aes(fill = estimate)) +
   coord_sf(crs = 26915) + 
   scale_fill_viridis_c() + mapTheme()
 
-acsYoungMen <- acsData %>%
-  spread(key = variable, value = estimate) 
+# acsYoungMen <- acsData %>%
+#   spread(key = variable, value = estimate) 
+# acsYoungMen <- acsYoungMen %>% mutate(
+#   males_18to24 = males_18_19+males_20+males_21+males_22_24) %>%
+#   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
+#   dplyr::select(GEOID, NAME, variable, estimate, geometry) %>%
+#   dplyr::filter(variable == "males_18to24")
+# acsYoungMen <- acsYoungMen[cincinnati, ]
+# acsYoungMen %>% ggplot(aes(fill = estimate)) +
+#   facet_wrap(~variable) +
+#   geom_sf(color = NA) +
+#   coord_sf(crs = 26915) + 
+#   scale_fill_viridis_c() + mapTheme()
+
+acsData <- acsData %>%
+  group_by(variable) %>%
+  mutate(grouped_id = row_number())
+acsYoungMen <- acsData %>% spread(key = "variable", value = "estimate") %>%
+  dplyr::select(-grouped_id)
 acsYoungMen <- acsYoungMen %>% mutate(
-  males_18to24 = males_18_19+males_20+males_21+males_22_24) %>%
+  males_25to44 = males_25_29+males_30_34+males_35_39+males_40_44) %>%
   gather("variable", "estimate", -GEOID, -NAME, -geometry) %>%
   dplyr::select(GEOID, NAME, variable, estimate, geometry) %>%
-  dplyr::filter(variable == "males_18to24")
+  dplyr::filter(variable == "males_25to44")
 acsYoungMen <- acsYoungMen[cincinnati, ]
 acsYoungMen %>% ggplot(aes(fill = estimate)) +
   facet_wrap(~variable) +
   geom_sf(color = NA) +
-  coord_sf(crs = 26915) + 
+  coord_sf(crs = 26915) +
   scale_fill_viridis_c() + mapTheme()
 
 acsMedHome <- acsData %>% dplyr::filter(variable == "median_home_value")
