@@ -1,5 +1,5 @@
 ---
-title: "MUSA 507 Final Project: Predicting Heroin Overdose Events in Cincinnati, OH"
+title: "Predicting Heroin Overdose Events in Cincinnati, Ohio"
 author: "Claire Allen-Platt and Nicolas Corona"
 date: "December 20, 2019"
 output:  
@@ -7,7 +7,7 @@ output:
     toc: TRUE
     toc_float: true
     code_folding: hide
-    theme: united
+    theme: journal
   
 ---
 ```{r setup, include = TRUE}
@@ -414,6 +414,7 @@ funTimes <- funTimes[cincinnati,]
 # unionTerminal <- unionTerminal %>% st_as_sf(coords = c("long", "lat"), crs = 4326, 
 #                                             agr = "constant") %>%
 #   st_transform(3735)
+
 transit <- transit %>% filter(STOPNAME == "Museum Ctr Layover")
 unionTerminal <- slice(transit, 1L)
 rm(transit)
@@ -485,9 +486,11 @@ zones_likely_drug_sale <- zoning %>% filter(potential_drug_use_sites == "Manufac
 
 # Introduction
 
-The Ohio Valley is a region of the midwest and midsouth United States in a public health crisis. Abuse of opioids, a class of drug that includes legal prescription painkillers like fentanyl and illegal painkiller derivatives like heroin, is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1],[^2],[^3]. These four states' epidemic of overdose deaths has driven a nationwide 29% increase in the mortality rate of Americans aged 29-34 since 2010[^4]. Ohio reports the second-highest rate of opioid-related drug overdose deaths in the country[^5], with fatalities most pronounced in the state's southwestern counties, where overdose death rates are two to four times the national average[^5],[^6]. Therefore, preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
+The Ohio Valley, situated in midwestern, midsouthern United States, is embroiled in a public health crisis. Opioid abuse is widespread across Ohio, Pennsylvania, Kentucky and Indiana[^1][^2][^3]. This epidemic of overdose deaths has driven a 29% increase in the mortality rate of Americans aged 29-34 nationwide since 2010[^4]. Ohio reports the second-highest rate of opioid-related overdose deaths in the country[^5], with fatalities most clustered in the state's southwestern counties.  In these counties, overdose death rates are two to four times the national average[^5][^6]. Preventing and decreasing deaths due to overdose is an urgent policy priority in the region.
 
-The following analysis focuses on southwest Ohio's largest city, Cincinnati, and heroin-related overdose events. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 deaths occurred in a single week, overwhelming the County Medical Examiner's office and straining the capacity of first responders to administer Narcan (naloxone), an overdose reversal drug, at the scene of overdose events[^7]. In response, the city began leveraging EMS call data to map heroin and other opioid overdoses and strategically deploy medical personnel and distribute prevention resources to medical professionals[^8]. These data are currently viewable in a public dashboard [online](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
+The following analysis focuses on southwestern Ohio's largest city: Cincinnati. Cincinnati declared heroin overdoses an "epidemic" in 2016 after 174 heroin-related deaths occurred within the span of a single week.  These deaths overwhelmed the County Medical Examiner's office and strained first responders' ability to administer Narcan (naloxone), an opioid overdose reversal drug, at the scene of suspected overdose events[^7]. To combat this epidemic, the city focused on its EMS deployment, leveraging dispatcher call data and ambulance response data to map heroin overdoses, identify overdose hotspots, and more effectively target its medical resources and personnel towards overdose response and prevention across the city[^8]. 
+
+The data used to inform Cincinnati's EMS decision-making are available to the public [here](https://insights.cincinnati-oh.gov/stories/s/Heroin-Overdose-Responses/dm3s-ep3u/). 
 
 ```{r map_of_midwest}
 # Map
@@ -513,9 +516,10 @@ ggplot() +
   mapTheme()
 ```
 
-However, non-medical personnel are also a valuable overdose prevention resource, but less strategic planning seems to have been focused on the peers, family members, roommates and retailers of drug users at risk for heroin overdose. If non-medical persons were equipped with the overdose reversal drug naloxone and knew how to responsibly administer it, many deaths might be prevented. In 2017, the Hamilton County Department of Public Health (the county in which Cincinnati is located) founded the Narcan Distribution Collaborative (NDC) with a goal of distributing take-home kits of naloxone to members of the public at no charge[^9],[^10]. 
+Medical personnel are the most prominent and immediate source of treatment for heroin overdoses. However, non-medical personnel play a large role in overdose prevention. In 2017, the Hamilton County Department of Public Health founded the Narcan Distribution Collaborative (NDC) to distribute free take-home naloxone kits for the public and to host naloxone training workshops for their usage[^9][^10]. 
 
-The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and provider of naloxone in the region[^11]. The organization has distributed more than 20,000 doses of naloxone since 2017[^9], but non-medical personnel must seek out a distribution site and proactively acquire a kit[^12]. And a map of naloxone distribution sites versus sites of heroin overdose in Cincinnati at the height of the epidemic demonstrates that sitse are not necessarily strategically placed near overdose clusters.
+The NDC quickly outstripped Emergency Medical Services (EMS) and pharmacies as the largest consumer and distributor of naloxone in the region[^11]. The organization has distributed more than 20,000 doses of naloxone since 2017[^9], primarily to individuals or organizations who seek out the NDC's events or request a workshop. As seen below, NDC distribution sites are not entirely located near overdose clusters. Improving the targeting of the NDC's marketing and kit distribution could place naloxone into the hands of the right people, saving more lives.
+
 
 ```{r overdose_vs_naloxone}
 # Heroin overdose vs. Naloxone distribution sites in Hamilton County:
@@ -531,9 +535,9 @@ ggplot() +
   mapTheme()
 ```
 
-We propose that overdose deaths could be further reduced if the NDC had hyperlocal data on geospatial heroin overdose risk and used it to select seasonal sites for naloxone distribution and training (libraries, fast food restaurants, parks and similar).
+We propose that overdose deaths could be further reduced if the NDC had access to a hyperlocal spatial risk assessment and used it to select seasonal sites for kit distribution and training workshops.
 
-Two recent spatial analyses of Cincinnati's EMS data[^13],[^14] suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status, as well as features of the built environment such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing or parks) or retail common to low-income or industrial neighborhoods (fast food restaurants, pool halls, adult entertainment venues), and also some crime types (assault and violent crime). The following analysis builds on this literature to address an immediate health policy need: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively stock naloxone kits and train kit users in high-risk locations. 
+Two recent spatial analyses of Cincinnati's EMS data[^13][^14]suggest that heroin misuse and overdose are hyperlocal phenomena correlated with residents' age, sex and socioeconomic status; as well as features of the city's built environment, such as likely locations of drug sale (abandoned properties, abandoned cars, neighborhoods zoned for manufacturing or parks) and retail common to low-income, commercial, or industrial neighborhoods (fast food restaurants, pool halls, adult entertainment venues); and several types of crime (assault and violent crime). The following analysis builds on this literature to pursue the following goal: predict seasonal heroin overdose hotspots in Cincinnati to help the NDC proactively distribute naloxone kits and train their users in high-risk locations. 
 
 # Data
 
@@ -566,17 +570,17 @@ Data for this analysis were gathered from the following sources. Information spa
       - Temperature 
       - Precipitation 
   - **[Google Maps](www.google.com/maps), [QSR Magazine](https://www.qsrmagazine.com/content/32-biggest-fast-food-chains-america), [Wikipedia](https://en.wikipedia.org/wiki/List_of_fast_food_restaurant_chains), [Thrillist](https://www.thrillist.com/eat/nation/best-midwest-restaurant-chains-fast-food)**
-      - Fast food chain restaurant locations (Li et al. (2019)[^13] found that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but their data source proved unavailable, a list of restaurants was generated based on major chains in the United States, midwest and Ohio, and a KML file manually generated in Google Maps).
+      - Fast food chain restaurant locations. Li et al. (2019)[^13] found that fast food locations were a strong covariate in predicting opioid overdose in Ohio, but as their data source proved unavailable, we compiled a list of restaurant locations based on major chains in the United States, midwest, and Ohio, and generated a KML file manually through Google Maps.
 
 # Exploratory approach
 
 Our exploration of Cincinnati data sought to identify factors that co-occur with the outcome of interest, heroin overdose events, measured by Cincinnati EMS calls either caused explicitly in response to heroin overdoses or that involved heroin and led to the administration of Narcan between 2015 - 2019.
 
-### Space/time process of heroin overdose events
+### Space-time process of heroin overdose events
 
-This analysis focuses on heroin overdoses specifically, rather than other opioid drugs. Literature from the Hamilton County Department of Public Health, Ohio Department of Health, National Institute on Drug Abuse, and Centers for Disease Control report that the number of heroin overdose deaths in Ohio increased sharply between 2010 and 2016, specifically reporting a statistically significant one-year increase in Ohio from 2016 to 2017[^15], and have been in decline since that time[^16]. (Drug overdose deaths caused by the synthetic opioid fentanyl have caused an increase in _all_ opioid-related overdose deaths during this same time period, but an analysis of fentanyl is outside the scope of this project)[^17]. 
+This analysis focuses on heroin overdoses, rather than the wider category of opioid overdoses. Literature from the Hamilton County Department of Public Health, Ohio Department of Health, National Institute on Drug Abuse, and Centers for Disease Control report that the number of heroin overdose deaths in Ohio increased sharply between 2010 and 2016, specifically reporting a statistically significant one-year increase in Ohio from 2016 to 2017[^15], and have been in decline since 2017[^16]. (Drug overdose deaths caused by the synthetic opioid fentanyl have caused an increase in _all_ opioid-related overdose deaths during this same time period, but fentanyl falls outside the scope of our analysis)[^17]. 
 
-Data from Cincinnati mirror this statewide trend. The following maps plot the count of heroin overdose events in Cincinnati from 2015, 2017 and 2019 based on EMS call data. 
+Data from Cincinnati mirror this statewide trend. The following maps plot the count of heroin overdose events in Cincinnati from 2015, 2017, and 2019 based on EMS call data. 
 
 <span style="font-size:1.2em">**Locations of heroin overdose events in Cincinnati**</span>
 ```{r exploratory, fig.width = 13}
@@ -606,7 +610,7 @@ grid.arrange(her2015, her2017, her2019, ncol = 3)
 
 ### Features associated with heroin overdose 
 
-The literature on opioid use indicates that several features of a city or neighborhood or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of a heroin overdose event. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space; followed  in Cincinnati specifically.
+The literature on heroin use indicates that several features of a city, neighborhood, or street corner's built environment, socioeconomic profile, retail landscape, visible blight, and violent crime rates are associated with an increased risk of heroin overdose events. Below is the spatial distribution of these risk factors in Cincinnati. First are maps of factors that exist as time-invariant points in space.
 
 <span style="font-size:1.2em">**Risk Factors**</span>
 ```{r risk_small_multiples, fig.width=10}
@@ -708,7 +712,7 @@ grid.arrange(expl_fv, expl_ff, ncol=2)
 
 ```
 
-The maps suggest that most but not all of these factors demonstrate spatial clustering similar to Cincinnati's heroin overdose sites and may therefore be useful in predicting overdose risk.
+The maps suggest that most of these factors demonstrate spatial clustering similar to Cincinnati's heroin overdose sites and may therefore be useful in predicting overdose risk.
 
 The features that do not appear to mimic the spatial process are those derived from 311 non-criminal complaints about trash; crimes classified as murder/homicide; and the locations of firearms dealers. Trash complaints and assaults are too prevalent to be of use, while firearms and weapons retail are too sparse.
 
@@ -781,15 +785,15 @@ grid.arrange(propPov, propBach, ncol = 2)
 grid.arrange(propMales, medHome, ncol = 2)
 ```
 
-Heroin use in Ohio is most prevalent among White, non-Hispanic males aged 25-44[^16], and it does appear that the proportion of young- and middle-aged White men in Cincinnati tracts demonstrates a roughly similar distribution as overdose events, with some exceptions. Poverty and low rates of college education also appear to be correlated with overdose.
+Heroin use in Ohio is most prevalent among White, non-Hispanic males aged 25-44[^16], and it does appear that the proportion of young- and middle-aged White men in Cincinnati tracts demonstrates a roughly similar distribution to overdose events. Poverty and low rates of college education also appear to be correlated with overdose events.
 
-# Spatial/time process 
+# Spatial-time process 
 
-As can be seen, the temporal process is similar to a negative quadratic function (a parabola that opens downard), while the spatial process displays clustering, most heavily in an arc on the southern side of the city, straddling train tracks and a waterway in south-central Cincinnati. 
+As seen in the data, the temporal process is similar to a negative quadratic function (a parabola that opens downard), while the spatial process displays clustering, most heavily in an arc across the southern side of the city, straddling train tracks and a waterway in south-central Cincinnati. 
 
 ### Units of spatial analysis
 
-To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at very local geographies. In some sense the size of the grid cell (1000 sq. ft) is arbitrary; we chose a size that was large enough to demonstrate meaningful variation from other cells, but small enough to capture phenomena that might be local to a subsection of a neighborhood. 
+To better understand spatial interrelationships between overdoses and related factors, we overlay a grid on the city (referred to as the "fishnet") with 1000-square-foot cells. Using grid cells as a unit of analysis allows us to aggregate factors at hyperlocal geographies. In a sense, the size of the grid cell (1000 sq. ft) is arbitrary; we chose a size large enough to demonstrate meaningful variation from other cells but small enough to capture phenomena that might be local to such subsections of the city. 
 
 ```{r spacetime, fig.width=10}
 # Maps of Cincinnati and fishnet overlay
