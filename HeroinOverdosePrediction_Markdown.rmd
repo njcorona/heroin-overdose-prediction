@@ -840,10 +840,10 @@ ggplot() +
 
 We take a few different approaches to engineering the features (i.e., factors) associated with overdose events by grid cell. We then test to see which engineering approach is superior for an overdose prediction model by observing correlations between the engineered feature and the outcome. 
 
-#### Counting risk factor events by grid cell
-First, we take a straightforward approach of counting the number of factor incidences per grid cell. Although aggregation by grid cell is intuitive to understand, it is a "rigid" approach and prone to bias because these summary values are influenced not only by the actual frequency of the phenomenon in question, but also by the previously-mentioned arbitrary scale of each cell[^18]. It is this arbitrariness, or modifiability, of the grid cell size that can be a source of bias in interpreting count data.
+#### Count of risk factor events
+First, we take a straightforward approach: counting the number of factor incidences per grid cell.  For example, the number of violent crimes per grid cell. While aggregation by grid cell is a fairly intuitive approach, it is prone to bias because the summary values are influenced by the arbitrary scale of each cell[^18].
 
-Note that aggregation only applies to data that are points in space (e.g., locations of vacant buildings, assaults, fast food restaurants) and not to data that are spread across larger scales (e.g., a tract of land that is zoned for manufacturing use). Also note that firearms dealers have been omitted as a factor because there are so few data (<30 locations).
+Note that aggregation only applies to data that are points in space (e.g., locations of vacant buildings, assaults, fast food restaurants) and does not apply to polygon data that are spread across larger scales (e.g., a tract of land zoned for manufacturing use). We exclude the location of firearms dealers as a factor because there are so few data.
 
 <span style="font-size:1.2em">**Count of risk factors by grid cell**</span>
 ```{r counts, fig.width=10}
@@ -923,7 +923,9 @@ grid.arrange(pc, vb, ncol = 2)
 
 ```
 
-Next we re-engineer each risk factor point feature as an average nearest-neighbor distance variable. That is, we calculate the average distance from the center of a grid cell to the three or four nearest points. This provides more flexibility than the aggregation approach and is potentially a bias-reduced estimate of risk exposure.
+#### Nearest-neighbor distance to risk factor events
+
+Next, we re-engineer each risk factor point feature as an average nearest-neighbor distance variable. In other words, we calculate the average distance from the center of a grid cell to the three or four nearest points of the risk factor. This provides more flexibility than the aggregation approach and is potentially a bias-reduced estimate of risk exposure.
 
 <span style="font-size:1.2em">**Nearest neighbor risk factors by grid cell**</span>
 ```{r nn, fig.width=10}
@@ -993,11 +995,13 @@ grid.arrange(pc.nn, vb.nn, ncol = 2)
 
 ```
 
-Finally, polygon data (e.g., land use zones, neighborhoods) were explored, as well as the distance to a single point of interest, the Union Terminal train station in Cincinnati. 
+#### Distance to Union Terminal
 
-The heroin overdoses on the south side of the city are heavily clustered but report a vertical blank white space in the center of the main cluster; these are railroad tracks, a small waterway and Interstate 75, which run north-south and terminate at the Ohio River that marks the southern boundary of Cincinnati. This transit hub is centered around Union Terminal, a train station and transit center, and each grid cell's Euclidean distance to Union Terminal was calculated as a risk factor for overdose. 
+Next, we explore the distance to a single point of interest, the Union Terminal train station in Cincinnati. 
 
-```{r nonpoint_data}
+The heroin overdoses on the south side of the city are heavily clustered but report a vertical blank white space in the center of the main cluster; these are railroad tracks, a small waterway and Interstate 75, which run north-south and terminate at the Ohio River that marks the southern boundary of Cincinnati. This transit hub is centered around Union Terminal, a train station and transit center, and each grid cell's Euclidean distance to Union Terminal is calculated as a possible risk factor for overdose. 
+
+```{r unionterminal_data}
 ###############################################################################
 ##  Euclidean distance
 ###############################################################################
@@ -1015,6 +1019,14 @@ ggplot() +
   labs(title="Euclidean distance to Union Terminal transit hub", subtitle = "Cincinnati, OH", fill = "Distance") +
   mapTheme() 
 
+```
+
+#### Polygon data
+
+Finally, we explore polygon data (e.g., neighborhoods) as possible covariates for heroin overdoses. TODO: Add more here.
+
+```{r nonpoint_data}
+
 ###############################################################################
 ##  Adding non-point data to the fishnet (tracts, zones etc)
 ###############################################################################
@@ -1028,8 +1040,6 @@ final_net_test <-
 
 final_net_backup <- final_net
 final_net_test_backup <- final_net_test
-# saveRDS(final_net_backup, "final_net_backup.RDS")
-# saveRDS(final_net_test_backup, "final_net_test_backup.RDS")
 
 # Add in count of manufacturing/recreational land use zones that intersect with grid cell
 zones <- zones_likely_drug_sale %>% dplyr::select() %>%
@@ -1085,68 +1095,103 @@ final_net_TEMP <- distinct(final_net_TEMP) %>% dplyr::select(vars)
 final_net <- left_join(final_net, final_net_TEMP)
 final_net_test <- left_join(final_net_test, final_net_TEMP)
 
-# saveRDS(final_net_backup, "final_net_backup.RDS")
-# saveRDS(final_net_test_backup, "final_net_test_backup.RDS")
+# TODO: Find what final_net_test is and see if I need to replicate the below code for it.
+final_net <-
+  st_centroid(final_net) %>%
+  st_join(., dplyr::select(sna, SNA_NAME)) %>%
+  st_join(., dplyr::select(zoning, zone_type)) %>%
+  st_set_geometry(NULL) %>%
+  left_join(dplyr::select(final_net, geometry, uniqueID)) %>%
+  st_sf() %>%
+  na.omit()
 
-# # Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
-# neigh <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == neighborhood) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Neighborhoods") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# land <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == land_use) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Manufacturing & Recreational Land Use") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# pov <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == prop_poverty) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Proportion of Residents in Poverty") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# white <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == prop_white) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Proportion White Residents") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# coll <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == prop_bach_or_higher) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Proportion of College-Educated Residents") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# males <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == prop_males_25to44) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Proportion of Males Age 25-44") +
-#   mapTheme() + theme(legend.position = "none")
-# 
-# medH <- final_net %>% gather(Variable, Value, -geometry) %>%
-#   filter(Variable == med_home_value) %>%
-#   ggplot() +
-#   geom_sf(aes(fill = Value)) +
-#   scale_fill_viridis(discrete = TRUE) +
-#   labs(title = "Median Home Value") +
-#   mapTheme() + theme(legend.position = "none")
+# For some reason, final_net has lots of duplicated values.
+final_net <- final_net[!duplicated(final_net),] 
+
+# Map of the data under fishnet cells (e.g. zoning type, neighborhood name)
+neigh <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == sna) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Neighborhoods") +
+  mapTheme() + theme(legend.position = "none")
+
+neigh
+
+zone_map <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == zoning) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Manufacturing & Recreational Land Use") +
+  mapTheme() + theme(legend.position = "none")
+
+zone_map
+
+land <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == land_use) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Manufacturing & Recreational Land Use") +
+  mapTheme() + theme(legend.position = "none")
+
+land
+
+pov <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == prop_poverty) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Proportion of Residents in Poverty") +
+  mapTheme() + theme(legend.position = "none")
+
+pov
+
+white <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == prop_white) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Proportion White Residents") +
+  mapTheme() + theme(legend.position = "none")
+
+white
+
+coll <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == prop_bach_or_higher) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Proportion of College-Educated Residents") +
+  mapTheme() + theme(legend.position = "none")
+
+coll
+
+males <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == prop_males_25to44) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Proportion of Males Age 25-44") +
+  mapTheme() + theme(legend.position = "none")
+
+males
+
+medH <- final_net %>% gather(Variable, Value, -geometry) %>%
+  filter(Variable == med_home_value) %>%
+  ggplot() +
+  geom_sf(aes(fill = Value)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title = "Median Home Value") +
+  mapTheme() + theme(legend.position = "none")
+
+medH
   
 ```
 
+# TODO: Stop here and see how the maps above generate.
 The correlations between each feature (and different method of engineering the feature) and the outcome of heroin overdose is below. 
 
 <span style="font-size:1.2em">**Heroin overdose count as a function of risk factors**</span>
